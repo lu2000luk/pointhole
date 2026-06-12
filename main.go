@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand/v2"
@@ -19,7 +20,7 @@ const prefix = "\x1b[35;1m[*]\x1b[0m "
 type Command struct {
 	target      string `json:"t"` // path
 	destination string `json:"d"` // path
-	command     string `json:"c"` // ls,mv,rm,get
+	command     string `json:"c"` // ls,mv,rm,get,ping,mkdir
 }
 
 type LSResponseEntry struct {
@@ -63,6 +64,11 @@ func generateRandomString(length int) string {
 	return sb.String()
 }
 
+func connect(u url.URL) (*websocket.Conn, error) {
+	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	return c, err
+}
+
 func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
@@ -73,57 +79,113 @@ func main() {
 
 	fmt.Println(prefix+"Connect your instance: \x1b[30;47;1m", id+key, "\x1b[0m")
 
-	u := url.URL{Scheme: "wss", Host: host, Path: "/", RawQuery: "id=" + id}
-
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-
-	if err != nil {
-		log.Fatal("Error while connecting:", err)
-		return
-	}
-
-	defer c.Close()
+	u := url.URL{Scheme: "wss", Host: host, Path: "/", RawQuery: "id=P-" + id}
 
 	done := make(chan struct{})
 
-	fmt.Println(prefix + "Waiting for client...")
-
 	go func() {
 		defer close(done)
+
+		c, err := connect(u)
+		if err != nil {
+			log.Println("Error while connecting:", err)
+			return
+		}
+		defer c.Close()
+
+		fmt.Println(prefix + "Waiting for client...")
+
 		for {
 			_, message, err := c.ReadMessage()
 			if err != nil {
 				log.Println("Error while reading:", err)
-				return
+
+				select {
+				case <-interrupt:
+					return
+				default:
+				}
+
+				c.Close()
+				backoff := 3 * time.Second
+				for {
+					select {
+					case <-interrupt:
+						return
+					default:
+					}
+					c, err = connect(u)
+					if err == nil {
+						log.Println(prefix + "Reconnected successfully")
+						break
+					}
+					log.Printf(prefix+"Reconnect failed: %v, retrying in %v", err, backoff)
+					time.Sleep(backoff)
+					if backoff < 30*time.Second {
+						backoff *= 2
+					}
+				}
+				continue
 			}
 
 			d, err := Decrypt(message, key)
 			if err != nil {
-				log.Println("Error while decrypting:", err)
+				log.Println(prefix+"Error while decrypting:", err)
+			}
+
+			com := Command{}
+			if err := json.Unmarshal(d, &com); err != nil {
+				log.Println(prefix+"Invalid packet:", err)
+			}
+
+			if com.command == "ping" {
+				log.Printf(prefix+"Received ping from %s", com.target)
+				continue
+			}
+
+			if com.command == "ls" {
+				if com.target == "" {
+					log.Printf(prefix + "Missing path for ls")
+				}
+				log.Printf(prefix+"Received ls command for %s", com.target)
+
+			}
+
+			if com.command == "rm" {
+				if com.target == "" {
+					log.Printf(prefix + "Missing path for rm")
+				}
+			}
+
+			if com.command == "mv" {
+				if com.target == "" || com.destination == "" {
+					log.Printf(prefix + "Missing path for mv")
+				}
+			}
+
+			if com.command == "mkdir" {
+				if com.target == "" {
+					log.Printf(prefix + "Missing path for mkdir")
+				}
+			}
+
+			if com.command == "get" {
+				if com.target == "" {
+					log.Printf(prefix + "Missing path for get")
+				}
 			}
 
 			log.Printf(prefix+"Message: %s", d)
 		}
 	}()
 
-	for {
+	select {
+	case <-done:
+	case <-interrupt:
+		log.Println(prefix + "Closing...")
 		select {
 		case <-done:
-			return
-		case <-interrupt:
-			log.Println(prefix + "Closing websocket connection...")
-
-			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			if err != nil {
-				log.Println("Error while closing:", err)
-				return
-			}
-
-			select { // wait for coroutine to close
-			case <-done:
-			case <-time.After(time.Second):
-			}
-			return
+		case <-time.After(time.Second):
 		}
 	}
 }
