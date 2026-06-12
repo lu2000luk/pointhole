@@ -24,13 +24,16 @@ type Command struct {
 }
 
 type LSResponseEntry struct {
-	success bool   `json:"s"`
-	name    string `json:"n"`
-	folder  bool   `json:"f"` // false = file / true = folder
-	size    int64  `json:"z"` // only for files
+	name   string `json:"n"`
+	folder bool   `json:"f"` // false = file / true = folder
+	size   int64  `json:"z"` // only for files
 }
 
-type LSResponse = []LSResponseEntry
+type LSResponse struct {
+	success bool              `json:"s"`
+	path    string            `json:"p"`
+	entries []LSResponseEntry `json:"e"`
+}
 
 type GETResponse struct {
 	success    bool   `json:"s"`
