@@ -18,48 +18,48 @@ const host = "67worker.lu2000luk.com"
 const prefix = "\x1b[35;1m[*]\x1b[0m\x1b[37m "
 
 type TransferChunkRange struct {
-	rangeStart int64 `json:"s"`
-	rangeEnd   int64 `json:"e"`
+	RangeStart int64 `json:"s"`
+	RangeEnd   int64 `json:"e"`
 }
 
 type TransferChunk struct {
-	transferId string             `json:"id"`
-	chunkrange TransferChunkRange `json:"r"`
-	content    []byte             `json:"c"`
+	TransferId string             `json:"id"`
+	Chunkrange TransferChunkRange `json:"r"`
+	Content    []byte             `json:"c"`
 }
 
 type Command struct {
-	target      string        `json:"t"` // path
-	destination string        `json:"d"` // path only for mv and copy
-	uploadData  TransferChunk `json:"u"` // only for uploadChunk
-	command     string        `json:"c"` // ls,mv,rm,get,ping,mkdir,copy,upload,uploadChunk
+	Target      string        `json:"t"` // path
+	Destination string        `json:"d"` // path only for mv and copy
+	UploadData  TransferChunk `json:"u"` // only for uploadChunk
+	Command     string        `json:"c"` // ls,mv,rm,get,ping,mkdir,copy,upload,uploadChunk
 }
 
 type LSResponseEntry struct {
-	name   string `json:"n"`
-	folder bool   `json:"f"` // false = file / true = folder
-	size   int64  `json:"z"` // only for files
+	Name   string `json:"n"`
+	Folder bool   `json:"f"` // false = file / true = folder
+	Size   int64  `json:"z"` // only for files
 }
 
 type UploadResponse struct {
-	transferId string `json:"id"`
-	success    bool   `json:"s"`
+	TransferId string `json:"id"`
+	Success    bool   `json:"s"`
 }
 
 type LSResponse struct {
-	success bool              `json:"s"`
-	path    string            `json:"p"`
-	entries []LSResponseEntry `json:"e"`
+	Success bool              `json:"s"`
+	Path    string            `json:"p"`
+	Entries []LSResponseEntry `json:"e"`
 }
 
 type GETResponse struct {
-	success    bool   `json:"s"`
-	name       string `json:"n"`
-	transferId string `json:"id"`
+	Success    bool   `json:"s"`
+	Name       string `json:"n"`
+	TransferId string `json:"id"`
 }
 
 type GenericResponse struct {
-	success bool `json:"s"`
+	Success bool `json:"s"`
 }
 
 func generateRandomString(length int) string {
@@ -148,61 +148,61 @@ func main() {
 				log.Println(prefix+"Invalid packet:", err)
 			}
 
-			if com.command == "ping" {
-				log.Printf(prefix+"Received ping from %s", com.target)
+			if com.Command == "ping" {
+				log.Printf(prefix+"Received ping from %s", com.Target)
 				continue
 			}
 
-			if com.command == "ls" {
-				if com.target == "" {
+			if com.Command == "ls" {
+				if com.Target == "" {
 					log.Printf(prefix + "Missing path for ls")
 				}
-				log.Printf(prefix+"Received ls command for %s", com.target)
+				log.Printf(prefix+"Received ls command for %s", com.Target)
 
 			}
 
-			if com.command == "rm" {
-				if com.target == "" {
+			if com.Command == "rm" {
+				if com.Target == "" {
 					log.Printf(prefix + "Missing path for rm")
 				}
 			}
 
-			if com.command == "mv" {
-				if com.target == "" || com.destination == "" {
+			if com.Command == "mv" {
+				if com.Target == "" || com.Destination == "" {
 					log.Printf(prefix + "Missing path for mv")
 				}
 			}
 
-			if com.command == "mkdir" {
-				if com.target == "" {
+			if com.Command == "mkdir" {
+				if com.Target == "" {
 					log.Printf(prefix + "Missing path for mkdir")
 				}
 			}
 
-			if com.command == "get" {
-				if com.target == "" {
+			if com.Command == "get" {
+				if com.Target == "" {
 					log.Printf(prefix + "Missing path for get")
 				}
 			}
 
-			if com.command == "copy" {
-				if com.target == "" {
+			if com.Command == "copy" {
+				if com.Target == "" {
 					log.Printf(prefix + "Missing TARGET path for copy")
 				}
 
-				if com.destination == "" {
+				if com.Destination == "" {
 					log.Printf(prefix + "Missing DESTINATION path for copy")
 				}
 			}
 
-			if com.command == "upload" {
-				if com.target == "" {
+			if com.Command == "upload" {
+				if com.Target == "" {
 					log.Printf(prefix + "Missing path for upload")
 				}
 			}
 
-			if com.command == "uploadChunk" {
-				if com.uploadData.transferId == "" {
+			if com.Command == "uploadChunk" {
+				if com.UploadData.TransferId == "" {
 					log.Printf(prefix + "Missing ID for uploadChunk")
 				}
 			}

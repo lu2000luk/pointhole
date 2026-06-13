@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
@@ -20,6 +21,55 @@ import (
 var host = "67worker.lu2000luk.com"
 var currentBackend backend.Backend[glfwbackend.GLFWWindowFlags]
 
+// TYPES (SAME AS IN server/main.go)
+
+type TransferChunkRange struct {
+	RangeStart int64 `json:"s"`
+	RangeEnd   int64 `json:"e"`
+}
+
+type TransferChunk struct {
+	TransferId string             `json:"id"`
+	Chunkrange TransferChunkRange `json:"r"`
+	Content    []byte             `json:"c"`
+}
+
+type Command struct {
+	Target      string        `json:"t"` // path
+	Destination string        `json:"d"` // path only for mv and copy
+	UploadData  TransferChunk `json:"u"` // only for uploadChunk
+	Command     string        `json:"c"` // ls,mv,rm,get,ping,mkdir,copy,upload,uploadChunk
+}
+
+type LSResponseEntry struct {
+	Name   string `json:"n"`
+	Folder bool   `json:"f"` // false = file / true = folder
+	Size   int64  `json:"z"` // only for files
+}
+
+type UploadResponse struct {
+	TransferId string `json:"id"`
+	Success    bool   `json:"s"`
+}
+
+type LSResponse struct {
+	Success bool              `json:"s"`
+	Path    string            `json:"p"`
+	Entries []LSResponseEntry `json:"e"`
+}
+
+type GETResponse struct {
+	Success    bool   `json:"s"`
+	Name       string `json:"n"`
+	TransferId string `json:"id"`
+}
+
+type GenericResponse struct {
+	Success bool `json:"s"`
+}
+
+// -------------------------------------
+
 var id string = ""
 var connecting atomic.Bool
 var setLayout bool = true
@@ -27,6 +77,15 @@ var interrupt = make(chan os.Signal, 1)
 var c unsafe.Pointer
 var u url.URL
 var reconnectStop = make(chan struct{})
+var connected bool = false
+var reconnecting bool = false
+
+// packet debugger window
+var commandName = ""
+
+var commandTarget = ""
+
+var commandDestination = ""
 
 func loadConn() *websocket.Conn {
 	return (*websocket.Conn)(atomic.LoadPointer(&c))
@@ -34,6 +93,40 @@ func loadConn() *websocket.Conn {
 
 func storeConn(conn *websocket.Conn) {
 	atomic.StorePointer(&c, unsafe.Pointer(conn))
+}
+
+func sendCommand(command Command) {
+	conn := loadConn()
+	if conn == nil {
+		fmt.Println("No connection available")
+		return
+	}
+
+	if command.Command == "" {
+		println("Command name cannot be empty")
+		return
+	}
+
+	pass := id[4:]
+	payload, err := json.Marshal(command)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Sending payload: %+v\n", command)
+	payloadEncrypted, err := Encrypt(payload, pass)
+	fmt.Printf("Encrypted payload: %x\n", payloadEncrypted)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = conn.WriteMessage(websocket.BinaryMessage, payloadEncrypted)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 }
 
 func connect(id string) {
@@ -55,7 +148,7 @@ func connect(id string) {
 		old.Close()
 	}
 
-	u = url.URL{Scheme: "wss", Host: host, Path: "/", RawQuery: "id=p-" + id[0:4]}
+	u = url.URL{Scheme: "wss", Host: host, Path: "/", RawQuery: "id=P-" + id[0:4]}
 	addr := u.String()
 	fmt.Printf("Connecting to %s\n", addr)
 
@@ -66,7 +159,9 @@ func connect(id string) {
 		conn, _, err := websocket.DefaultDialer.Dial(addr, nil)
 		if err == nil {
 			storeConn(conn)
-			fmt.Printf("Connected successfully to %s", addr)
+			fmt.Printf("Connected successfully to %s\n", addr)
+			connected = true
+			reconnecting = false
 			readLoop(conn)
 
 			select {
@@ -75,12 +170,14 @@ func connect(id string) {
 			default:
 			}
 
-			fmt.Printf("Connection lost, reconnecting to %s...", addr)
+			fmt.Printf("Connection lost, reconnecting to %s...\n", addr)
+			reconnecting = true
 			backoff = 1 * time.Second
 			continue
 		}
 
 		fmt.Printf("Connection failed: %v (attempt %d)\n", err, attempt+1)
+		connected = false
 
 		select {
 		case <-time.After(backoff):
@@ -113,23 +210,50 @@ func readLoop(conn *websocket.Conn) {
 			return
 		}
 
-		log.Printf("Message: %s", message)
+		pass := id[4:]
+		decrypted, err := Decrypt(message, pass)
+		if err != nil {
+			log.Println("Error while decrypting:", err)
+		}
+
+		log.Printf("Message: %s", decrypted)
 	}
 }
 
 func loop() {
 	imgui.ClearSizeCallbackPool()
 
-	if imgui.BeginV("Connect", nil, imgui.WindowFlagsNoResize|imgui.WindowFlagsNoCollapse) {
-		if imgui.InputTextWithHint("##id", "Your code...", &id, imgui.InputTextFlagsEnterReturnsTrue, nil) {
-			go connect(id)
-		}
+	if !connected {
+		if imgui.BeginV("Connect", nil, imgui.WindowFlagsNoResize|imgui.WindowFlagsNoCollapse) {
+			if imgui.InputTextWithHint("##id", "Your code...", &id, imgui.InputTextFlagsEnterReturnsTrue, nil) {
+				go connect(id)
+			}
 
-		if imgui.Button("Connect") {
-			go connect(id)
+			if imgui.Button("Connect") {
+				go connect(id)
+			}
 		}
+		imgui.End()
 	}
-	imgui.End()
+
+	if connected {
+		if imgui.Begin("Packet Debugger") {
+			imgui.InputTextWithHint("##command", "Command name...", &commandName, 0, nil)
+			imgui.InputTextWithHint("##target", "Command target...", &commandTarget, 0, nil)
+			imgui.InputTextWithHint("##destination", "Command destination...", &commandDestination, 0, nil)
+			if imgui.Button("Send") {
+				sendCommand(Command{
+					Target:      commandTarget,
+					Command:     commandName,
+					Destination: commandDestination,
+				})
+				commandName = ""
+				commandTarget = ""
+				commandDestination = ""
+			}
+		}
+		imgui.End()
+	}
 
 	if setLayout {
 		viewport := imgui.MainViewport().Size()
