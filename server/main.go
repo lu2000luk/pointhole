@@ -15,18 +15,35 @@ import (
 )
 
 const host = "67worker.lu2000luk.com"
-const prefix = "\x1b[35;1m[*]\x1b[0m "
+const prefix = "\x1b[35;1m[*]\x1b[0m\x1b[37m "
+
+type TransferChunkRange struct {
+	rangeStart int64 `json:"s"`
+	rangeEnd   int64 `json:"e"`
+}
+
+type TransferChunk struct {
+	transferId string             `json:"id"`
+	chunkrange TransferChunkRange `json:"r"`
+	content    []byte             `json:"c"`
+}
 
 type Command struct {
-	target      string `json:"t"` // path
-	destination string `json:"d"` // path
-	command     string `json:"c"` // ls,mv,rm,get,ping,mkdir
+	target      string        `json:"t"` // path
+	destination string        `json:"d"` // path only for mv and copy
+	uploadData  TransferChunk `json:"u"` // only for uploadChunk
+	command     string        `json:"c"` // ls,mv,rm,get,ping,mkdir,copy,upload,uploadChunk
 }
 
 type LSResponseEntry struct {
 	name   string `json:"n"`
 	folder bool   `json:"f"` // false = file / true = folder
 	size   int64  `json:"z"` // only for files
+}
+
+type UploadResponse struct {
+	transferId string `json:"id"`
+	success    bool   `json:"s"`
 }
 
 type LSResponse struct {
@@ -43,17 +60,6 @@ type GETResponse struct {
 
 type GenericResponse struct {
 	success bool `json:"s"`
-}
-
-type TransferChunkRange struct {
-	rangeStart int64 `json:"s"`
-	rangeEnd   int64 `json:"e"`
-}
-
-type TransferChunk struct {
-	transferId string             `json:"id"`
-	chunkrange TransferChunkRange `json:"r"`
-	content    []byte             `json:"c"`
 }
 
 func generateRandomString(length int) string {
@@ -91,7 +97,7 @@ func main() {
 
 		c, err := connect(u)
 		if err != nil {
-			log.Println("Error while connecting:", err)
+			log.Println(prefix+"Error while connecting:", err)
 			return
 		}
 		defer c.Close()
@@ -101,7 +107,7 @@ func main() {
 		for {
 			_, message, err := c.ReadMessage()
 			if err != nil {
-				log.Println("Error while reading:", err)
+				log.Println(prefix+"Error while reading:", err)
 
 				select {
 				case <-interrupt:
@@ -175,6 +181,28 @@ func main() {
 			if com.command == "get" {
 				if com.target == "" {
 					log.Printf(prefix + "Missing path for get")
+				}
+			}
+
+			if com.command == "copy" {
+				if com.target == "" {
+					log.Printf(prefix + "Missing TARGET path for copy")
+				}
+
+				if com.destination == "" {
+					log.Printf(prefix + "Missing DESTINATION path for copy")
+				}
+			}
+
+			if com.command == "upload" {
+				if com.target == "" {
+					log.Printf(prefix + "Missing path for upload")
+				}
+			}
+
+			if com.command == "uploadChunk" {
+				if com.uploadData.transferId == "" {
+					log.Printf(prefix + "Missing ID for uploadChunk")
 				}
 			}
 
