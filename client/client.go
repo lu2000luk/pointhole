@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 	"unsafe"
@@ -32,6 +34,7 @@ type TransferChunk struct {
 	TransferId string             `json:"id"`
 	Chunkrange TransferChunkRange `json:"r"`
 	Content    []byte             `json:"c"`
+	Type       string             `json:"type"`
 }
 
 type Command struct {
@@ -50,22 +53,26 @@ type LSResponseEntry struct {
 type UploadResponse struct {
 	TransferId string `json:"id"`
 	Success    bool   `json:"s"`
+	Type       string `json:"type"`
 }
 
 type LSResponse struct {
 	Success bool              `json:"s"`
 	Path    string            `json:"p"`
 	Entries []LSResponseEntry `json:"e"`
+	Type    string            `json:"type"`
 }
 
 type GETResponse struct {
 	Success    bool   `json:"s"`
 	Name       string `json:"n"`
 	TransferId string `json:"id"`
+	Type       string `json:"type"`
 }
 
 type GenericResponse struct {
-	Success bool `json:"s"`
+	Success bool   `json:"s"`
+	Type    string `json:"type"`
 }
 
 // -------------------------------------
@@ -80,11 +87,17 @@ var reconnectStop = make(chan struct{})
 var connected bool = false
 var reconnecting bool = false
 
+var emulatedFS = make(map[string][]LSResponseEntry)
+
+// browser window
+
+var browserPath = "/"
+var sentLSPacketFor = ""
+var pathInput = browserPath
+
 // packet debugger window
 var commandName = ""
-
 var commandTarget = ""
-
 var commandDestination = ""
 
 func loadConn() *websocket.Conn {
@@ -217,6 +230,28 @@ func readLoop(conn *websocket.Conn) {
 		}
 
 		log.Printf("Message: %s", decrypted)
+
+		genericTemplate := GenericResponse{}
+		err = json.Unmarshal(decrypted, &genericTemplate) // Unmarshal to GenericResponse since all responses implement it (to get the type and unmarshal correctly)
+
+		if err != nil {
+			log.Println("Error while unmarshaling:", err)
+		}
+
+		switch genericTemplate.Type {
+		case "ls":
+			lsTemplate := LSResponse{}
+			_ = json.Unmarshal(decrypted, &lsTemplate)
+			fixedPath := lsTemplate.Path
+			fixedPath = strings.Replace(fixedPath, "C:\\", "/", -1) // windows compat
+			fixedPath = strings.Replace(fixedPath, "\\", "/", -1)
+			fmt.Printf("EmulatedFS Path: %s\n", fixedPath)
+			emulatedFS[fixedPath] = lsTemplate.Entries
+			break
+		default:
+			log.Println("Unknown type:", genericTemplate.Type)
+		}
+
 	}
 }
 
@@ -250,6 +285,69 @@ func loop() {
 				commandName = ""
 				commandTarget = ""
 				commandDestination = ""
+			}
+		}
+		imgui.End()
+
+		if imgui.Begin("Browser") {
+			if browserPath != sentLSPacketFor {
+				sendCommand(Command{
+					Target:  browserPath,
+					Command: "ls",
+				})
+
+				sentLSPacketFor = browserPath
+			}
+
+			if imgui.InputTextWithHint("##pathInput", "/", &pathInput, imgui.InputTextFlagsEnterReturnsTrue, nil) {
+				fixedPath := pathInput
+				fixedPath = strings.Replace(fixedPath, "C:\\", "/", -1) // windows compat
+				fixedPath = strings.Replace(fixedPath, "\\", "/", -1)
+				fixedPath = strings.Trim(fixedPath, "/")
+				browserPath = fixedPath
+				pathInput = fixedPath
+			}
+
+			imgui.SameLine()
+
+			if imgui.Button("Refresh") {
+				sendCommand(Command{
+					Target:  browserPath,
+					Command: "ls",
+				})
+			}
+
+			imgui.SameLine()
+
+			if imgui.Button("^") {
+				if browserPath != "/" {
+					browserPath = browserPath[0:strings.LastIndex(browserPath, "/")]
+					pathInput = browserPath
+				}
+			}
+
+			imgui.Spacing()
+
+			emulatedEntry := emulatedFS[browserPath]
+
+			for _, entry := range emulatedEntry {
+				if entry.Size == 0 {
+					if imgui.Button(entry.Name + " >") {
+						if strings.HasSuffix(browserPath, "/") {
+							browserPath = browserPath + entry.Name
+							pathInput = browserPath
+						} else {
+							browserPath = browserPath + "/" + entry.Name
+							pathInput = browserPath
+						}
+					}
+				} else {
+					imgui.Text(entry.Name)
+					imgui.SameLine()
+
+					imgui.Text(strconv.Itoa(int(entry.Size)))
+				}
+				imgui.Separator()
 			}
 		}
 		imgui.End()
