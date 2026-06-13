@@ -79,6 +79,7 @@ func connect(u url.URL) (*websocket.Conn, error) {
 }
 
 func main() {
+	log.SetFlags(0)
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
