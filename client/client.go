@@ -35,13 +35,15 @@ type TransferChunk struct {
 	Chunkrange TransferChunkRange `json:"r"`
 	Content    []byte             `json:"c"`
 	Type       string             `json:"type"`
+	IsEnd      bool               `json:"e"`
 }
 
 type Command struct {
-	Target      string        `json:"t"` // path
-	Destination string        `json:"d"` // path only for mv and copy
-	UploadData  TransferChunk `json:"u"` // only for uploadChunk
-	Command     string        `json:"c"` // ls,mv,rm,get,ping,mkdir,copy,upload,uploadChunk
+	Target        string             `json:"t"` // path (transferId for getChunk)
+	Destination   string             `json:"d"` // path only for mv and copy
+	GetChunkRange TransferChunkRange `json:"r"`
+	UploadData    TransferChunk      `json:"u"` // only for uploadChunk
+	Command       string             `json:"c"` // ls,mv,rm,get,ping,mkdir,copy,upload,uploadChunk,getChunk
 }
 
 type LSResponseEntry struct {
@@ -68,6 +70,20 @@ type GETResponse struct {
 	Name       string `json:"n"`
 	TransferId string `json:"id"`
 	Type       string `json:"type"`
+}
+
+type GETChunkResponse struct {
+	Success    bool          `json:"s"`
+	Name       string        `json:"n"`
+	TransferId string        `json:"id"`
+	Chunk      TransferChunk `json:"c"`
+	Type       string        `json:"type"`
+}
+
+type UploadGetChunkResponse struct {
+	Success bool               `json:"s"` // no operation has to be done on the server
+	Type    string             `json:"type"`
+	Range   TransferChunkRange `json:"r"`
 }
 
 type GenericResponse struct {
