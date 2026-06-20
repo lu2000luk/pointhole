@@ -9,7 +9,7 @@ Built with Go.
 - client/ Desktop app with cimgui-go
 - server/ CLI/file server
 
-Server software at https://git.lu2000luk.com/lu2000luk/end2end
+Server software at https://git.lu2000luk.com/lu2000luk/end2end (all packets are encrypted)
 
 ## How does it do it
 
