@@ -102,6 +102,9 @@ var reconnectStop = make(chan struct{})
 var connected bool = false
 var reconnecting bool = false
 
+var copiedPath string = ""
+var isCut bool = false
+
 var emulatedFS = make(map[string][]LSResponseEntry)
 
 // browser window
@@ -262,7 +265,14 @@ func readLoop(conn *websocket.Conn) {
 			fixedPath = strings.Replace(fixedPath, "\\", "/", -1)
 			fmt.Printf("EmulatedFS Path: %s\n", fixedPath)
 			emulatedFS[fixedPath] = lsTemplate.Entries
-			break
+
+		case "rm", "mkdir", "mv", "copy":
+			// refresh
+			sendCommand(Command{
+				Target:  browserPath,
+				Command: "ls",
+			})
+
 		default:
 			log.Println("Unknown type:", genericTemplate.Type)
 		}
@@ -342,12 +352,33 @@ func loop() {
 				}
 			}
 
+			if copiedPath != "" {
+				imgui.SameLine()
+				if imgui.Button("Paste") {
+					if isCut {
+						sendCommand(Command{
+							Target:      copiedPath,
+							Destination: browserPath + "/" + copiedPath[strings.LastIndex(copiedPath, "/")+1:],
+							Command:     "mv",
+						})
+						copiedPath = browserPath + "/" + copiedPath[strings.LastIndex(copiedPath, "/")+1:]
+						isCut = false
+					} else {
+						sendCommand(Command{
+							Target:      copiedPath,
+							Destination: browserPath + "/" + copiedPath[strings.LastIndex(copiedPath, "/")+1:],
+							Command:     "copy",
+						})
+					}
+				}
+			}
+
 			imgui.Spacing()
 
 			emulatedEntry := emulatedFS[browserPath]
 
 			for _, entry := range emulatedEntry {
-				if entry.Size == 0 {
+				if entry.Folder == true {
 					if imgui.Button(entry.Name + " >") {
 						if strings.HasSuffix(browserPath, "/") {
 							browserPath = browserPath + entry.Name
@@ -358,11 +389,38 @@ func loop() {
 						}
 					}
 				} else {
-					imgui.Text(entry.Name)
-					imgui.SameLine()
+					imgui.Button(entry.Name)
+				}
 
+				if imgui.BeginPopupContextItem() {
+					if imgui.MenuItemBool("Copy") {
+						copiedPath = browserPath + "/" + entry.Name
+						isCut = false
+					}
+					if imgui.MenuItemBool("Cut") {
+						copiedPath = browserPath + "/" + entry.Name
+						isCut = true
+					}
+
+					if imgui.MenuItemBool("Delete") {
+						if copiedPath == browserPath+"/"+entry.Name {
+							copiedPath = ""
+						}
+
+						sendCommand(Command{
+							Target:  browserPath + "/" + entry.Name,
+							Command: "rm",
+						})
+					}
+
+					imgui.EndPopup()
+				}
+
+				if entry.Folder == false {
+					imgui.SameLine()
 					imgui.Text(BytesToReadable(int(entry.Size)))
 				}
+
 				imgui.Separator()
 			}
 		}
