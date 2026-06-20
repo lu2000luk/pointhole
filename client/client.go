@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -282,6 +281,7 @@ func loop() {
 
 			if imgui.Button("Connect") {
 				go connect(id)
+				setLayout = true
 			}
 		}
 		imgui.End()
@@ -361,7 +361,7 @@ func loop() {
 					imgui.Text(entry.Name)
 					imgui.SameLine()
 
-					imgui.Text(strconv.Itoa(int(entry.Size)))
+					imgui.Text(BytesToReadable(int(entry.Size)))
 				}
 				imgui.Separator()
 			}
@@ -374,9 +374,11 @@ func loop() {
 
 		imgui.SetWindowSizeStr("Connect", imgui.Vec2{300, 100})
 		imgui.SetWindowPosStr("Connect", imgui.Vec2{viewport.X / 2, viewport.Y / 2})
-	}
 
-	setLayout = false
+		imgui.SetWindowCollapsedStr("Packet Debugger", true)
+
+		setLayout = false
+	}
 }
 
 func main() {

@@ -270,17 +270,87 @@ func main() {
 				if com.Target == "" {
 					log.Printf(prefix + "Missing path for rm")
 				}
+
+				log.Printf(prefix+"Received rm command for %s", com.Target)
+				err := os.RemoveAll(com.Target)
+				resp := GenericResponse{
+					Success: err == nil,
+					Type:    "rm",
+				}
+				jsonresp, err := json.Marshal(resp)
+
+				if err != nil {
+					fmt.Println(prefix+"Error while marshalling rm response:", err)
+				}
+				fmt.Println(string(jsonresp))
+
+				encrypted, err := Encrypt(jsonresp, key)
+				if err != nil {
+					fmt.Println(prefix+"Error while encrypting rm response:", err)
+				}
+
+				err = c.WriteMessage(websocket.BinaryMessage, encrypted)
+				if err != nil {
+					log.Println(prefix+"Error while writing rm response:", err)
+				}
 			}
 
 			if com.Command == "mv" {
 				if com.Target == "" || com.Destination == "" {
 					log.Printf(prefix + "Missing path for mv")
 				}
+
+				log.Printf(prefix+"Received mv command from %s to %s", com.Target, com.Destination)
+				err := os.Rename(com.Target, com.Destination)
+				resp := GenericResponse{
+					Success: err == nil,
+					Type:    "mv",
+				}
+				jsonresp, err := json.Marshal(resp)
+
+				if err != nil {
+					fmt.Println(prefix+"Error while marshalling mv response:", err)
+				}
+				fmt.Println(string(jsonresp))
+
+				encrypted, err := Encrypt(jsonresp, key)
+				if err != nil {
+					fmt.Println(prefix+"Error while encrypting mv response:", err)
+				}
+
+				err = c.WriteMessage(websocket.BinaryMessage, encrypted)
+				if err != nil {
+					log.Println(prefix+"Error while writing mv response:", err)
+				}
 			}
 
 			if com.Command == "mkdir" {
 				if com.Target == "" {
 					log.Printf(prefix + "Missing path for mkdir")
+				}
+
+				log.Printf(prefix+"Received mkdir command for %s", com.Target)
+
+				err := os.MkdirAll(com.Target, 0755)
+				resp := GenericResponse{
+					Success: err == nil,
+					Type:    "mkdir",
+				}
+				jsonresp, err := json.Marshal(resp)
+
+				if err != nil {
+					fmt.Println(prefix+"Error while marshalling mkdir response:", err)
+				}
+				fmt.Println(string(jsonresp))
+
+				encrypted, err := Encrypt(jsonresp, key)
+				if err != nil {
+					fmt.Println(prefix+"Error while encrypting mkdir response:", err)
+				}
+
+				err = c.WriteMessage(websocket.BinaryMessage, encrypted)
+				if err != nil {
+					log.Println(prefix+"Error while writing mkdir response:", err)
 				}
 			}
 
@@ -297,6 +367,30 @@ func main() {
 
 				if com.Destination == "" {
 					log.Printf(prefix + "Missing DESTINATION path for copy")
+				}
+
+				log.Printf(prefix+"Received copy command from %s to %s", com.Target, com.Destination)
+				
+				err := copyFileOrDir(com.Target, com.Destination)
+				resp := GenericResponse{
+					Success: err == nil,
+					Type:    "copy",
+				}
+				jsonresp, err := json.Marshal(resp)
+
+				if err != nil {
+					fmt.Println(prefix+"Error while marshalling copy response:", err)
+				}
+				fmt.Println(string(jsonresp))
+
+				encrypted, err := Encrypt(jsonresp, key)
+				if err != nil {
+					fmt.Println(prefix+"Error while encrypting copy response:", err)
+				}
+
+				err = c.WriteMessage(websocket.BinaryMessage, encrypted)
+				if err != nil {
+					log.Println(prefix+"Error while writing copy response:", err)
 				}
 			}
 
