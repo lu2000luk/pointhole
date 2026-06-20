@@ -17,7 +17,7 @@ import (
 )
 
 const host = "67worker.lu2000luk.com"
-const prefix = "\x1b[35;1m[*]\x1b[0m\x1b[37m "
+const prefix = "\x1b[35;1m[+]\x1b[0m\x1b[37m "
 
 type TransferChunkRange struct {
 	RangeStart int64 `json:"s"`
