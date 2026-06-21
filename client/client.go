@@ -128,7 +128,7 @@ func storeConn(conn *websocket.Conn) {
 	atomic.StorePointer(&c, unsafe.Pointer(conn))
 }
 
-func sendCommand(command Command) {
+func SendCommand(command Command) {
 	conn := loadConn()
 	if conn == nil {
 		fmt.Println("No connection available")
@@ -270,7 +270,7 @@ func readLoop(conn *websocket.Conn) {
 
 		case "rm", "mkdir", "mv", "copy":
 			// refresh
-			sendCommand(Command{
+			SendCommand(Command{
 				Target:  browserPath,
 				Command: "ls",
 			})
@@ -321,7 +321,7 @@ func loop() {
 				imgui.InputTextWithHint("##target", "Command target...", &commandTarget, 0, nil)
 				imgui.InputTextWithHint("##destination", "Command destination...", &commandDestination, 0, nil)
 				if imgui.Button("Send") {
-					sendCommand(Command{
+					SendCommand(Command{
 						Target:      commandTarget,
 						Command:     commandName,
 						Destination: commandDestination,
@@ -353,7 +353,7 @@ func loop() {
 
 		if imgui.Begin("Browser") {
 			if browserPath != sentLSPacketFor {
-				sendCommand(Command{
+				SendCommand(Command{
 					Target:  browserPath,
 					Command: "ls",
 				})
@@ -379,7 +379,7 @@ func loop() {
 			imgui.SameLine()
 
 			if imgui.Button("Refresh") {
-				sendCommand(Command{
+				SendCommand(Command{
 					Target:  browserPath,
 					Command: "ls",
 				})
@@ -400,7 +400,7 @@ func loop() {
 				imgui.SameLine()
 				if imgui.Button("Paste") {
 					if isCut {
-						sendCommand(Command{
+						SendCommand(Command{
 							Target:      copiedPath,
 							Destination: browserPath + "/" + copiedPath[strings.LastIndex(copiedPath, "/")+1:],
 							Command:     "mv",
@@ -408,7 +408,7 @@ func loop() {
 						copiedPath = browserPath + "/" + copiedPath[strings.LastIndex(copiedPath, "/")+1:]
 						isCut = false
 					} else {
-						sendCommand(Command{
+						SendCommand(Command{
 							Target:      copiedPath,
 							Destination: browserPath + "/" + copiedPath[strings.LastIndex(copiedPath, "/")+1:],
 							Command:     "copy",
@@ -451,7 +451,7 @@ func loop() {
 							copiedPath = ""
 						}
 
-						sendCommand(Command{
+						SendCommand(Command{
 							Target:  browserPath + "/" + entry.Name,
 							Command: "rm",
 						})
