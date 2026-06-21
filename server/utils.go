@@ -70,3 +70,40 @@ func copyDir(src, dst string) error {
 
 	return nil
 }
+
+func GetFileContentRange(filePath string, start, end int64) ([]byte, error) {
+	if start > end {
+		return nil, nil
+	}
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	length := end - start + 1
+	content := make([]byte, length)
+
+	_, err = file.ReadAt(content, start)
+	if err != nil {
+		return nil, err
+	}
+
+	return content, nil
+}
+
+func WriteFileContentRange(filePath string, start int64, content []byte) error {
+	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.WriteAt(content, start)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

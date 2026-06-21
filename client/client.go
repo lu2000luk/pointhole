@@ -105,6 +105,8 @@ var reconnecting bool = false
 var copiedPath string = ""
 var isCut bool = false
 
+var editor = "code" //
+
 var emulatedFS = make(map[string][]LSResponseEntry)
 
 // browser window
@@ -502,6 +504,12 @@ func main() {
 	currentBackend.SetCloseCallback(func() {
 		fmt.Println("Bye!")
 	})
+
+	// set editor (fallback to "code")
+	editorEnv := os.Getenv("EDITOR")
+	if editorEnv != "" {
+		editor = editorEnv
+	}
 
 	go func() {
 		<-interrupt
