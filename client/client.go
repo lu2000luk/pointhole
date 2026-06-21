@@ -117,6 +117,8 @@ var pathInput = browserPath
 var commandName = ""
 var commandTarget = ""
 var commandDestination = ""
+var showPacketDebugger bool = true
+var showInfoMenu bool = false
 
 func loadConn() *websocket.Conn {
 	return (*websocket.Conn)(atomic.LoadPointer(&c))
@@ -291,29 +293,63 @@ func loop() {
 
 			if imgui.Button("Connect") {
 				go connect(id)
-				setLayout = true
 			}
 		}
 		imgui.End()
 	}
 
-	if connected {
-		if imgui.Begin("Packet Debugger") {
-			imgui.InputTextWithHint("##command", "Command name...", &commandName, 0, nil)
-			imgui.InputTextWithHint("##target", "Command target...", &commandTarget, 0, nil)
-			imgui.InputTextWithHint("##destination", "Command destination...", &commandDestination, 0, nil)
-			if imgui.Button("Send") {
-				sendCommand(Command{
-					Target:      commandTarget,
-					Command:     commandName,
-					Destination: commandDestination,
-				})
-				commandName = ""
-				commandTarget = ""
-				commandDestination = ""
+	if imgui.BeginV("Title Bar", nil, imgui.WindowFlagsMenuBar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove) {
+		if imgui.BeginMenuBar() {
+			if imgui.BeginMenu("Pointhole") {
+				if imgui.MenuItemBool("Show packet debugger") {
+					showPacketDebugger = true
+				}
+				if imgui.MenuItemBool("Show info menu") {
+					showInfoMenu = true
+				}
+				imgui.EndMenu()
 			}
+			imgui.EndMenuBar()
 		}
-		imgui.End()
+	}
+	imgui.End()
+
+	if connected {
+		if showPacketDebugger {
+			if imgui.BeginV("Packet Debugger", &showPacketDebugger, imgui.WindowFlagsNone) {
+				imgui.InputTextWithHint("##command", "Command name...", &commandName, 0, nil)
+				imgui.InputTextWithHint("##target", "Command target...", &commandTarget, 0, nil)
+				imgui.InputTextWithHint("##destination", "Command destination...", &commandDestination, 0, nil)
+				if imgui.Button("Send") {
+					sendCommand(Command{
+						Target:      commandTarget,
+						Command:     commandName,
+						Destination: commandDestination,
+					})
+					commandName = ""
+					commandTarget = ""
+					commandDestination = ""
+				}
+			}
+			imgui.End()
+		}
+
+		if showInfoMenu {
+			if imgui.BeginV("Info Menu", &showInfoMenu, imgui.WindowFlagsNone) {
+				imgui.Text("ID: " + id)
+				if reconnecting {
+					imgui.Text("Status: Reconnecting...")
+				} else if connected {
+					imgui.Text("Status: Connected")
+				} else {
+					imgui.Text("Status: Disconnected")
+				}
+
+				imgui.Text(fmt.Sprintf("ShowInfoMenu: %v", showInfoMenu))
+				imgui.Text(fmt.Sprintf("ShowPacketDebugger: %v", showPacketDebugger))
+			}
+			imgui.End()
+		}
 
 		if imgui.Begin("Browser") {
 			if browserPath != sentLSPacketFor {
@@ -326,10 +362,16 @@ func loop() {
 			}
 
 			if imgui.InputTextWithHint("##pathInput", "/", &pathInput, imgui.InputTextFlagsEnterReturnsTrue, nil) {
+				if pathInput == "" {
+					pathInput = "/"
+				}
+
 				fixedPath := pathInput
 				fixedPath = strings.Replace(fixedPath, "C:\\", "/", -1) // windows compat
 				fixedPath = strings.Replace(fixedPath, "\\", "/", -1)
-				fixedPath = strings.Trim(fixedPath, "/")
+				if len(fixedPath) > 1 {
+					fixedPath = strings.TrimRight(fixedPath, "/")
+				}
 				browserPath = fixedPath
 				pathInput = fixedPath
 			}
@@ -346,10 +388,12 @@ func loop() {
 			imgui.SameLine()
 
 			if imgui.Button("^") {
-				if browserPath != "/" {
-					browserPath = browserPath[0:strings.LastIndex(browserPath, "/")]
-					pathInput = browserPath
+				browserPath = browserPath[0:strings.LastIndex(browserPath, "/")]
+				if browserPath == "" {
+					browserPath = "/"
 				}
+
+				pathInput = browserPath
 			}
 
 			if copiedPath != "" {
@@ -433,8 +477,8 @@ func loop() {
 		imgui.SetWindowSizeStr("Connect", imgui.Vec2{300, 100})
 		imgui.SetWindowPosStr("Connect", imgui.Vec2{viewport.X / 2, viewport.Y / 2})
 
-		imgui.SetWindowCollapsedStr("Packet Debugger", true)
-
+		imgui.SetWindowSizeStr("Title Bar", imgui.Vec2{viewport.X, 0})
+		imgui.SetWindowPosStr("Title Bar", imgui.Vec2{0, 0})
 		setLayout = false
 	}
 }
