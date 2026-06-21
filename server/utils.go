@@ -1,11 +1,16 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
+	"log"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"strings"
-	"math/rand/v2"
+
+	"github.com/gorilla/websocket"
 )
 
 func copyFileOrDir(src, dst string) error {
@@ -119,4 +124,23 @@ func GenerateRandomString(length int) string {
 		sb.WriteByte(charset[randomIndex])
 	}
 	return sb.String()
+}
+
+func MarshallAndSend(resp any, c *websocket.Conn, key string) {
+	jsonresp, err := json.Marshal(resp)
+
+	if err != nil {
+		fmt.Println(prefix+"Error while marshalling response:", err)
+	}
+	fmt.Println(string(jsonresp))
+
+	encrypted, err := Encrypt(jsonresp, key)
+	if err != nil {
+		fmt.Println(prefix+"Error while encrypting response:", err)
+	}
+
+	err = c.WriteMessage(websocket.BinaryMessage, encrypted)
+	if err != nil {
+		log.Println(prefix+"Error while writing response:", err)
+	}
 }

