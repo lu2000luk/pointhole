@@ -36,7 +36,7 @@ type TransferChunk struct {
 type Command struct {
 	Target        string             `json:"t"` // path (transferId for getChunk)
 	Destination   string             `json:"d"` // path only for mv and copy
-	GetChunkRange TransferChunkRange `json:"r"`
+	GetChunkRange TransferChunkRange `json:"r"` // only for getChunk
 	UploadData    TransferChunk      `json:"u"` // only for uploadChunk
 	Command       string             `json:"c"` // ls,mv,rm,get,ping,mkdir,copy,upload,uploadChunk,getChunk
 }
@@ -49,6 +49,7 @@ type LSResponseEntry struct {
 
 type UploadResponse struct {
 	TransferId string `json:"id"`
+	Path       string `json:"p"`
 	Success    bool   `json:"s"`
 	Type       string `json:"type"`
 }
@@ -62,7 +63,7 @@ type LSResponse struct {
 
 type GETResponse struct {
 	Success    bool   `json:"s"`
-	Name       string `json:"n"`
+	Path       string `json:"p"`
 	TransferId string `json:"id"`
 	Type       string `json:"type"`
 }
@@ -317,26 +318,12 @@ func main() {
 
 				resp := GETResponse{
 					Success:    true,
-					Name:       info.Name(),
+					Path:       com.Target,
 					TransferId: transferId,
 					Type:       "get",
 				}
-				jsonresp, err := json.Marshal(resp)
 
-				if err != nil {
-					fmt.Println(prefix+"Error while marshalling get response:", err)
-				}
-				fmt.Println(string(jsonresp))
-
-				encrypted, err := Encrypt(jsonresp, key)
-				if err != nil {
-					fmt.Println(prefix+"Error while encrypting get response:", err)
-				}
-
-				err = c.WriteMessage(websocket.BinaryMessage, encrypted)
-				if err != nil {
-					log.Println(prefix+"Error while writing get response:", err)
-				}
+				MarshallAndSend(resp, c, key)
 			}
 
 			if com.Command == "copy" {
@@ -392,6 +379,32 @@ func main() {
 				if com.UploadData.TransferId == "" {
 					log.Printf(prefix + "Missing ID for uploadChunk")
 				}
+
+				log.Printf(prefix+"Received uploadChunk command for %s, range: %d-%d", com.UploadData.TransferId, com.UploadData.Chunkrange.RangeStart, com.UploadData.Chunkrange.RangeEnd)
+
+				transferId := com.UploadData.TransferId
+				filePath, exists := transfers[transferId]
+				if !exists {
+					log.Printf(prefix+"Invalid transfer ID for uploadChunk: %s", transferId)
+					continue
+				}
+
+				err := WriteFileContentRange(filePath, com.UploadData.Chunkrange.RangeStart, com.UploadData.Content)
+				if err != nil {
+					log.Printf(prefix+"Error while writing file chunk: %v", err)
+					continue
+				}
+
+				resp := UploadGetChunkResponse{
+					Success: true,
+					Type:    "uploadChunk",
+					Range: TransferChunkRange{
+						RangeStart: com.UploadData.Chunkrange.RangeStart,
+						RangeEnd:   com.UploadData.Chunkrange.RangeEnd,
+					},
+				}
+
+				MarshallAndSend(resp, c, key)
 			}
 
 			if com.Command == "getChunk" {

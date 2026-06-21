@@ -40,7 +40,7 @@ type TransferChunk struct {
 type Command struct {
 	Target        string             `json:"t"` // path (transferId for getChunk)
 	Destination   string             `json:"d"` // path only for mv and copy
-	GetChunkRange TransferChunkRange `json:"r"`
+	GetChunkRange TransferChunkRange `json:"r"` // only for getChunk
 	UploadData    TransferChunk      `json:"u"` // only for uploadChunk
 	Command       string             `json:"c"` // ls,mv,rm,get,ping,mkdir,copy,upload,uploadChunk,getChunk
 }
@@ -53,6 +53,7 @@ type LSResponseEntry struct {
 
 type UploadResponse struct {
 	TransferId string `json:"id"`
+	Path       string `json:"p"`
 	Success    bool   `json:"s"`
 	Type       string `json:"type"`
 }
@@ -66,7 +67,7 @@ type LSResponse struct {
 
 type GETResponse struct {
 	Success    bool   `json:"s"`
-	Name       string `json:"n"`
+	Path       string `json:"p"`
 	TransferId string `json:"id"`
 	Type       string `json:"type"`
 }
@@ -108,6 +109,8 @@ var isCut bool = false
 var editor = "code" //
 
 var emulatedFS = make(map[string][]LSResponseEntry)
+var get_transfers = make(map[string]string)    // [id]:[path]
+var upload_transfers = make(map[string]string) // [id]:[path]
 
 // browser window
 
@@ -276,6 +279,30 @@ func readLoop(conn *websocket.Conn) {
 				Target:  browserPath,
 				Command: "ls",
 			})
+		case "get":
+			getTemplate := GETResponse{}
+			_ = json.Unmarshal(decrypted, &getTemplate)
+			get_transfers[getTemplate.TransferId] = getTemplate.Path
+
+		case "getChunk":
+			getChunkTemplate := GETChunkResponse{}
+			_ = json.Unmarshal(decrypted, &getChunkTemplate)
+
+			path := get_transfers[getChunkTemplate.TransferId]
+			if path == "" {
+				log.Println("No transfer found for id:", getChunkTemplate.TransferId)
+				continue
+			}
+
+		case "upload":
+			uploadTemplate := UploadResponse{}
+			_ = json.Unmarshal(decrypted, &uploadTemplate)
+			upload_transfers[uploadTemplate.TransferId] = uploadTemplate.Path
+
+		case "uploadChunk":
+			uploadChunkTemplate := UploadGetChunkResponse{}
+			_ = json.Unmarshal(decrypted, &uploadChunkTemplate)
+			log.Printf("Upload chunk response: %+v\n", uploadChunkTemplate)
 
 		default:
 			log.Println("Unknown type:", genericTemplate.Type)
