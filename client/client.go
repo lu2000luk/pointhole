@@ -349,6 +349,7 @@ func loop() {
 
 				imgui.Text(fmt.Sprintf("ShowInfoMenu: %v", showInfoMenu))
 				imgui.Text(fmt.Sprintf("ShowPacketDebugger: %v", showPacketDebugger))
+				imgui.Text(fmt.Sprintf("Editor: %v", editor))
 			}
 			imgui.End()
 		}

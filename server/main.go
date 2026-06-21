@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand/v2"
 	"net/url"
 	"os"
 	"os/signal"
@@ -85,17 +84,6 @@ type GenericResponse struct {
 	Type    string `json:"type"`
 }
 
-func generateRandomString(length int) string {
-	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	var sb strings.Builder
-	sb.Grow(length)
-	for i := 0; i < length; i++ {
-		randomIndex := rand.IntN(len(charset))
-		sb.WriteByte(charset[randomIndex])
-	}
-	return sb.String()
-}
-
 func connect(u url.URL) (*websocket.Conn, error) {
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	return c, err
@@ -173,8 +161,8 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt)
 
 	// Generate key pair [id = 4][key = 8]
-	id := generateRandomString(4)
-	key := generateRandomString(8)
+	id := GenerateRandomString(4)
+	key := GenerateRandomString(8)
 
 	fmt.Println(prefix+"Connect your instance: \x1b[30;47;1m", id+key, "\x1b[0m")
 
@@ -370,7 +358,7 @@ func main() {
 				}
 
 				log.Printf(prefix+"Received copy command from %s to %s", com.Target, com.Destination)
-				
+
 				err := copyFileOrDir(com.Target, com.Destination)
 				resp := GenericResponse{
 					Success: err == nil,

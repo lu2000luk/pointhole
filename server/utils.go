@@ -4,6 +4,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
+	"math/rand/v2"
 )
 
 func copyFileOrDir(src, dst string) error {
@@ -106,4 +108,15 @@ func WriteFileContentRange(filePath string, start int64, content []byte) error {
 	}
 
 	return nil
+}
+
+func GenerateRandomString(length int) string {
+	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	var sb strings.Builder
+	sb.Grow(length)
+	for i := 0; i < length; i++ {
+		randomIndex := rand.IntN(len(charset))
+		sb.WriteByte(charset[randomIndex])
+	}
+	return sb.String()
 }
