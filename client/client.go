@@ -112,8 +112,20 @@ var emulatedFS = make(map[string][]LSResponseEntry)
 var get_transfers = make(map[string]string)    // [id]:[path]
 var upload_transfers = make(map[string]string) // [id]:[path]
 
-// browser window
+// transfers window
+type OngoingTransfer struct {
+	TransferId string
+	Path       string
+	Done       bool
+	DoneBytes  int64
+	TotalBytes int64
+}
 
+var ratransfers = []string{}                            // [path] (random access transfers, only added to the list when the transfer is getting an access, IDs arent used here as the access can be either get or upload)
+var ongoingTransfers = make(map[string]OngoingTransfer) // [id]:[ongoingTransfer]
+var showTransfersWindow bool = true
+
+// browser window
 var browserPath = "/"
 var sentLSPacketFor = ""
 var pathInput = browserPath
@@ -122,8 +134,11 @@ var pathInput = browserPath
 var commandName = ""
 var commandTarget = ""
 var commandDestination = ""
-var showPacketDebugger bool = true
+var showPacketDebugger bool = false
 var showInfoMenu bool = false
+var showTransferDebugger bool = false
+var transferClientPath = ""
+var transferServerPath = ""
 
 func loadConn() *websocket.Conn {
 	return (*websocket.Conn)(atomic.LoadPointer(&c))
@@ -336,6 +351,9 @@ func loop() {
 				if imgui.MenuItemBool("Show info menu") {
 					showInfoMenu = true
 				}
+				if imgui.MenuItemBool("Show transfer debugger") {
+					showTransferDebugger = true
+				}
 				imgui.EndMenu()
 			}
 			imgui.EndMenuBar()
@@ -344,11 +362,31 @@ func loop() {
 	imgui.End()
 
 	if connected {
+
+		if showTransferDebugger {
+			if imgui.BeginV("TransferDebugger", &showTransferDebugger, imgui.WindowFlagsNone) {
+				imgui.InputTextWithHint("##debuggerclientpath", "Client path...", &transferClientPath, 0, nil)
+				imgui.InputTextWithHint("##debuggerserverpath", "Server path...", &transferServerPath, 0, nil)
+				if imgui.Button("Upload") {
+					err := UploadFile(transferClientPath, transferServerPath, &upload_transfers, &ongoingTransfers)
+					if err != nil {
+						fmt.Printf("Error uploading file: %v\n", err)
+					}
+				}
+
+				for id, transfer := range ongoingTransfers {
+					imgui.Separator()
+					imgui.Text(fmt.Sprintf("%s | Done: %v | %d/%d", id, transfer.Done, transfer.DoneBytes, transfer.TotalBytes))
+				}
+			}
+			imgui.End()
+		}
+
 		if showPacketDebugger {
 			if imgui.BeginV("Packet Debugger", &showPacketDebugger, imgui.WindowFlagsNone) {
-				imgui.InputTextWithHint("##command", "Command name...", &commandName, 0, nil)
-				imgui.InputTextWithHint("##target", "Command target...", &commandTarget, 0, nil)
-				imgui.InputTextWithHint("##destination", "Command destination...", &commandDestination, 0, nil)
+				imgui.InputTextWithHint("##debuggercommand", "Command name...", &commandName, 0, nil)
+				imgui.InputTextWithHint("##debuggertarget", "Command target...", &commandTarget, 0, nil)
+				imgui.InputTextWithHint("##debuggerdestination", "Command destination...", &commandDestination, 0, nil)
 				if imgui.Button("Send") {
 					SendCommand(Command{
 						Target:      commandTarget,

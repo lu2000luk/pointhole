@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"math/rand/v2"
 	"os"
 	"strconv"
@@ -33,12 +34,12 @@ func GetFileContentRange(filePath string, start, end int64) ([]byte, error) {
 	length := end - start + 1
 	content := make([]byte, length)
 
-	_, err = file.ReadAt(content, start)
-	if err != nil {
+	n, err := file.ReadAt(content, start)
+	if err != nil && err != io.EOF {
 		return nil, err
 	}
 
-	return content, nil
+	return content[:n], nil
 }
 
 func GenerateRandomString(length int) string {
@@ -50,4 +51,13 @@ func GenerateRandomString(length int) string {
 		sb.WriteByte(charset[randomIndex])
 	}
 	return sb.String()
+}
+
+func GetKeyByValue(m map[string]string, value string) string {
+	for k, v := range m {
+		if v == value {
+			return k
+		}
+	}
+	return ""
 }

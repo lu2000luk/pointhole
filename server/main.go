@@ -359,9 +359,7 @@ func main() {
 
 				info, err := os.Stat(absPath) // dont check for error since the file might not exist yet (for new files)
 
-				if info.IsDir() {
-					log.Printf(prefix+"Invalid path for upload: %s", absPath)
-					continue
+				if err == nil && info.IsDir() {
 				}
 
 				transferId := GenerateRandomString(12)
@@ -370,6 +368,7 @@ func main() {
 				resp := UploadResponse{
 					Success:    true,
 					TransferId: transferId,
+					Path:       com.Target,
 					Type:       "upload",
 				}
 				MarshallAndSend(resp, c, key)
