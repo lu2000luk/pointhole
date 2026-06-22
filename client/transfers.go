@@ -23,88 +23,87 @@ func UploadFile(clientPath string, serverPath string, uploadTransfers *map[strin
 
 	log.Printf("Starting upload of %s to %s", clientPath, serverPath)
 
-	go func() {
-		ticker := time.NewTicker(chunkInterval * time.Millisecond)
-		defer ticker.Stop()
+	ticker := time.NewTicker(chunkInterval * time.Millisecond)
+	defer ticker.Stop()
 
-		hasGeneratedId := false
-		generatedId := ""
-		sentIDRequest := false
+	hasGeneratedId := false
+	generatedId := ""
+	sentIDRequest := false
 
-		for {
-			select {
-			case <-ticker.C:
-				log.Printf("Uploading %s...\n", serverPath)
-				if !hasGeneratedId {
-					if GetKeyByValue(*uploadTransfers, serverPath) != "" {
-						generatedId = GetKeyByValue(*uploadTransfers, serverPath)
-						hasGeneratedId = true
+	for {
+		select {
+		case <-ticker.C:
+			log.Printf("Uploading %s...\n", serverPath)
+			if !hasGeneratedId {
+				if GetKeyByValue(*uploadTransfers, serverPath) != "" {
+					generatedId = GetKeyByValue(*uploadTransfers, serverPath)
+					hasGeneratedId = true
 
-						(*windowTransfers)[generatedId] = OngoingTransfer{
-							Path:       serverPath,
-							TransferId: generatedId,
-							Done:       false,
-							TotalBytes: data.Size(),
-							DoneBytes:  0,
-						}
-					} else {
-						if !sentIDRequest {
-							SendCommand(Command{
-								Command: "upload",
-								Target:  serverPath,
-							})
-							sentIDRequest = true
-						}
-						continue
-					}
-				}
-
-				lastDoneBytes := (*windowTransfers)[generatedId].DoneBytes
-
-				chunk, err := GetFileContentRange(clientPath, lastDoneBytes, lastDoneBytes+int64(chunkSize)-1)
-				if err != nil {
-					log.Printf("Error reading file chunk: %v\n", err)
-					return
-				}
-
-				resp := Command{
-					Command: "uploadChunk",
-					Target:  serverPath,
-					UploadData: TransferChunk{
+					(*windowTransfers)[generatedId] = OngoingTransfer{
+						Path:       serverPath,
 						TransferId: generatedId,
-						Type:       "uploadChunk",
-						Content:    chunk,
-						IsEnd:      len(chunk) < chunkSize,
-						Chunkrange: TransferChunkRange{
-							RangeStart: lastDoneBytes,
-							RangeEnd:   lastDoneBytes + int64(len(chunk)) - 1,
-						},
-					},
-				}
-
-				SendCommand(resp)
-
-				(*windowTransfers)[generatedId] = OngoingTransfer{
-					Path:       serverPath,
-					TransferId: generatedId,
-					Done:       len(chunk) < chunkSize,
-					TotalBytes: data.Size(),
-					DoneBytes:  lastDoneBytes + int64(len(chunk)),
-				}
-
-				if len(chunk) < chunkSize {
-					go func() {
-						time.Sleep(1 * time.Second)
+						Done:       false,
+						TotalBytes: data.Size(),
+						DoneBytes:  0,
+					}
+				} else {
+					if !sentIDRequest {
 						SendCommand(Command{
-							Command: "ls",
-							Target:  serverPath[:strings.LastIndex(serverPath, "/")],
+							Command: "upload",
+							Target:  serverPath,
 						})
-					}()
-					return
+						sentIDRequest = true
+					}
+					continue
 				}
 			}
+
+			lastDoneBytes := (*windowTransfers)[generatedId].DoneBytes
+
+			chunk, err := GetFileContentRange(clientPath, lastDoneBytes, lastDoneBytes+int64(chunkSize)-1)
+			if err != nil {
+				log.Printf("Error reading file chunk: %v\n", err)
+				return err
+			}
+
+			resp := Command{
+				Command: "uploadChunk",
+				Target:  serverPath,
+				UploadData: TransferChunk{
+					TransferId: generatedId,
+					Type:       "uploadChunk",
+					Content:    chunk,
+					IsEnd:      len(chunk) < chunkSize,
+					Chunkrange: TransferChunkRange{
+						RangeStart: lastDoneBytes,
+						RangeEnd:   lastDoneBytes + int64(len(chunk)) - 1,
+					},
+				},
+			}
+
+			SendCommand(resp)
+
+			(*windowTransfers)[generatedId] = OngoingTransfer{
+				Path:       serverPath,
+				TransferId: generatedId,
+				Done:       len(chunk) < chunkSize,
+				TotalBytes: data.Size(),
+				DoneBytes:  lastDoneBytes + int64(len(chunk)),
+			}
+
+			if len(chunk) < chunkSize {
+				go func() {
+					time.Sleep(1 * time.Second)
+					SendCommand(Command{
+						Command: "ls",
+						Target:  serverPath[:strings.LastIndex(serverPath, "/")],
+					})
+				}()
+				return nil
+			}
 		}
-	}()
+	}
+
 	return nil
 }
 
@@ -189,4 +188,39 @@ func RandomRead(serverPath string, start, end int64, getTransfers *map[string]st
 	delete(*requestedChunksResponse, req)
 
 	return data.Content, nil
+}
+
+func DownloadFile(serverPath string, localPath string, size int64, getTransfers *map[string]string, requestedChunks *[]ReqResRandChunk, requestedChunksResponse *map[ReqResRandChunk]TransferChunk) error {
+	var offset int64 = 0
+	for offset < size {
+		time.Sleep(80 * time.Millisecond)
+		end := offset + chunkSize - 1
+		if end >= size {
+			end = size - 1
+		}
+
+		log.Printf("Requesting chunk %d-%d of %s\n", offset, end, serverPath)
+		chunkData, err := RandomRead(serverPath, offset, end, getTransfers, requestedChunks, requestedChunksResponse)
+		if err != nil {
+			return err
+		}
+
+		f, err := os.OpenFile(localPath, os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return err
+		}
+
+		_, err = f.WriteAt(chunkData, offset)
+		if err != nil {
+			f.Close()
+			return err
+		}
+		f.Close()
+
+		offset += int64(len(chunkData))
+	}
+
+	log.Printf("Download of %s completed successfully\n", serverPath)
+
+	return nil
 }

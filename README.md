@@ -22,6 +22,5 @@ Read and writes are mainly for editing small files such as configs. Large files 
 ## Planned
 
 - Full packet support
-- Text editor
 - QoL (Upload to pastebin, integrated terminal, explorer tabs/favourites)
-- FUSE filesystem
+- FUSE filesystemilesystem

@@ -109,8 +109,6 @@ var showUI bool = true
 var copiedPath string = ""
 var isCut bool = false
 
-var editor = "code" //
-
 var emulatedFS = make(map[string][]LSResponseEntry)
 var get_transfers = make(map[string]string)    // [id]:[path]
 var upload_transfers = make(map[string]string) // [id]:[path]
@@ -447,10 +445,12 @@ func loop() {
 				imgui.InputTextWithHint("##debuggerclientpath", "Client path...", &transferClientPath, 0, nil)
 				imgui.InputTextWithHint("##debuggerserverpath", "Server path...", &transferServerPath, 0, nil)
 				if imgui.Button("Upload") {
-					err := UploadFile(transferClientPath, transferServerPath, &upload_transfers, &ongoingTransfers)
-					if err != nil {
-						fmt.Printf("Error uploading file: %v\n", err)
-					}
+					go func() {
+						err := UploadFile(transferClientPath, transferServerPath, &upload_transfers, &ongoingTransfers)
+						if err != nil {
+							fmt.Printf("Error uploading file: %v\n", err)
+						}
+					}()
 				}
 
 				for id, transfer := range ongoingTransfers {
@@ -493,7 +493,6 @@ func loop() {
 
 				imgui.Text(fmt.Sprintf("ShowInfoMenu: %v", showInfoMenu))
 				imgui.Text(fmt.Sprintf("ShowPacketDebugger: %v", showPacketDebugger))
-				imgui.Text(fmt.Sprintf("Editor: %v", editor))
 			}
 			imgui.End()
 		}
@@ -568,10 +567,12 @@ func loop() {
 					}
 
 					serverPath := browserPath + "/" + filename[strings.LastIndex(filename, "/")+1:]
-					err = UploadFile(filename, serverPath, &upload_transfers, &ongoingTransfers)
-					if err != nil {
-						log.Printf("Error uploading file: %v", err)
-					}
+					go func() {
+						err = UploadFile(filename, serverPath, &upload_transfers, &ongoingTransfers)
+						if err != nil {
+							log.Printf("Error uploading file: %v", err)
+						}
+					}()
 				}
 			}
 
@@ -649,6 +650,17 @@ func loop() {
 				if entry.Folder == false {
 					imgui.SameLine()
 					imgui.Text(BytesToReadable(int(entry.Size)))
+					imgui.SameLine()
+					imgui.PushIDStr("##edit_" + entry.Name)
+					if imgui.Button("Edit") {
+						serverPath := browserPath + "/" + entry.Name
+						size := entry.Size
+						go func() {
+							log.Printf("Opening file in editor: %s\n", serverPath)
+							OpenInEditor(serverPath, size, &upload_transfers, &ongoingTransfers, &get_transfers, &requested_random_chunk, &requested_random_chunk_response)
+						}()
+					}
+					imgui.PopID()
 				}
 
 				imgui.Separator()
@@ -688,12 +700,6 @@ func main() {
 	currentBackend.SetCloseCallback(func() {
 		fmt.Println("Bye!")
 	})
-
-	// set editor (fallback to "code")
-	editorEnv := os.Getenv("EDITOR")
-	if editorEnv != "" {
-		editor = editorEnv
-	}
 
 	go func() {
 		<-interrupt
