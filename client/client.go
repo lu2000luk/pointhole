@@ -141,6 +141,10 @@ var browserPath = "/"
 var sentLSPacketFor = ""
 var pathInput = browserPath
 
+var isRenaming bool = false
+var renamingPath string = ""
+var renamingNewName string = ""
+
 // packet debugger window
 var commandName = ""
 var commandTarget = ""
@@ -394,6 +398,22 @@ func loop() {
 	}
 	imgui.End()
 
+	if isRenaming {
+		if imgui.BeginV("Rename", nil, imgui.WindowFlagsNoResize|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoMove) {
+			imgui.InputTextWithHint("##newname", "New name...", &renamingNewName, imgui.InputTextFlagsEnterReturnsTrue, nil)
+			if imgui.Button("Rename") {
+				SendCommand(Command{
+					Target:      renamingPath,
+					Destination: browserPath + "/" + renamingNewName,
+					Command:     "mv",
+				})
+				isRenaming = false
+				showUI = true
+			}
+		}
+		imgui.End()
+	}
+
 	if connected && showUI {
 		if showRandomReadWindow {
 			if imgui.BeginV("Random Read Window", &showRandomReadWindow, imgui.WindowFlagsNone) {
@@ -478,6 +498,7 @@ func loop() {
 			imgui.End()
 		}
 
+		imgui.SetNextWindowSizeV(imgui.Vec2{400, 400}, imgui.CondAppearing)
 		if imgui.Begin("Browser") {
 			if browserPath != sentLSPacketFor {
 				SendCommand(Command{
@@ -597,6 +618,13 @@ func loop() {
 							Target:  browserPath + "/" + entry.Name,
 							Command: "rm",
 						})
+					}
+
+					if imgui.MenuItemBool("Rename") {
+						isRenaming = true
+						renamingPath = browserPath + "/" + entry.Name
+						renamingNewName = entry.Name
+						showUI = false
 					}
 
 					imgui.EndPopup()
