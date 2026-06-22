@@ -17,7 +17,7 @@ Websockets.
 
 ## Don't move large files with this!
 
-Read and writes are mainly for editing small files such as configs. Large files are supported but the speed is capped at less than 4mbps and errors might occour.
+Read and writes are mainly for editing small files such as configs. Large files are supported but the speed is capped at less than 1mbps and errors might occour.
 
 ## Planned
 
