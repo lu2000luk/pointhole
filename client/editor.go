@@ -41,6 +41,13 @@ func OpenInEditor(serverPath string, size int64, RRuploadTransfers *map[string]s
 		}
 
 		log.Printf("File closed, uploading changes back to server: %s\n", serverPath)
+
+		// Remove existing server file to prevent edits to stack like this [edit 6 bytes][original files last 2 bytes] when original is 8 bytes
+		SendCommand(Command{
+			Command: "rm",
+			Target:  serverPath,
+		})
+		time.Sleep(200 * time.Millisecond) // temporary fix
 		err = UploadFile(tempFilePath, serverPath, RRuploadTransfers, RRwindowTransfers)
 		if err != nil {
 			log.Printf("Error uploading file: %v\n", err)
@@ -48,7 +55,6 @@ func OpenInEditor(serverPath string, size int64, RRuploadTransfers *map[string]s
 		}
 
 		time.Sleep(2 * time.Second) // temporary fix
-
 		err = os.Remove(tempFilePath)
 		if err != nil {
 			log.Printf("Error removing temporary file: %v\n", err)
