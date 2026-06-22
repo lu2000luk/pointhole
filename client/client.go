@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -132,7 +133,7 @@ type OngoingTransfer struct {
 
 var ratransfers = []string{}                            // [path] (random access transfers, only added to the list when the transfer is getting an access, IDs arent used here as the access can be either get or upload)
 var ongoingTransfers = make(map[string]OngoingTransfer) // [id]:[ongoingTransfer]
-var showTransfersWindow bool = true
+var showTransfersWindow bool = false
 
 // browser window
 var browserPath = "/"
@@ -391,6 +392,14 @@ func loop() {
 
 				imgui.EndMenu()
 			}
+
+			if imgui.BeginMenu("Transfers") {
+				if imgui.MenuItemBool("Toggle transfers window") {
+					showTransfersWindow = !showTransfersWindow
+				}
+
+				imgui.EndMenu()
+			}
 			imgui.EndMenuBar()
 		}
 	}
@@ -413,6 +422,34 @@ func loop() {
 	}
 
 	if connected && showUI {
+		if showTransfersWindow {
+			imgui.SetNextWindowSizeV(imgui.Vec2{200, 100}, imgui.CondAppearing)
+			if imgui.BeginV("Transfers", &showTransfersWindow, imgui.WindowFlagsNone) {
+				transferIDs := make([]string, 0, len(ongoingTransfers))
+				for id := range ongoingTransfers {
+					transferIDs = append(transferIDs, id)
+				}
+				sort.Strings(transferIDs)
+				for _, id := range transferIDs {
+					transfer := ongoingTransfers[id]
+					imgui.PushIDStr(id)
+					if transfer.Done {
+						imgui.Spacing()
+						imgui.Text(fmt.Sprintf("%s | DONE", id))
+					} else {
+						imgui.Spacing()
+						imgui.ProgressBarV(float32(transfer.DoneBytes)/float32(transfer.TotalBytes), imgui.Vec2{0, 0}, fmt.Sprintf("%s/%s", BytesToReadable(int(transfer.DoneBytes)), BytesToReadable(int(transfer.TotalBytes))))
+					}
+					imgui.PopID()
+				}
+
+				if len(ongoingTransfers) == 0 {
+					imgui.Text("No ongoing transfers")
+				}
+			}
+			imgui.End()
+		}
+
 		if showRandomReadWindow {
 			if imgui.BeginV("Random Read Window", &showRandomReadWindow, imgui.WindowFlagsNone) {
 				imgui.InputTextWithHint("##randomReadPath", "Path...", &randomReadPath, 0, nil)
@@ -453,7 +490,13 @@ func loop() {
 					}()
 				}
 
-				for id, transfer := range ongoingTransfers {
+				debugIDs := make([]string, 0, len(ongoingTransfers))
+				for id := range ongoingTransfers {
+					debugIDs = append(debugIDs, id)
+				}
+				sort.Strings(debugIDs)
+				for _, id := range debugIDs {
+					transfer := ongoingTransfers[id]
 					imgui.Separator()
 					imgui.Text(fmt.Sprintf("%s | Done: %v | %d/%d", id, transfer.Done, transfer.DoneBytes, transfer.TotalBytes))
 				}
@@ -497,7 +540,7 @@ func loop() {
 			imgui.End()
 		}
 
-		imgui.SetNextWindowSizeV(imgui.Vec2{400, 400}, imgui.CondAppearing)
+		imgui.SetNextWindowSizeV(imgui.Vec2{500, 400}, imgui.CondAppearing)
 		if imgui.Begin("Browser") {
 			if browserPath != sentLSPacketFor {
 				SendCommand(Command{
@@ -546,6 +589,7 @@ func loop() {
 			imgui.SameLine()
 
 			if imgui.Button("Upload") {
+				showTransfersWindow = true
 				filename, err := dialog.File().Title("Select file to upload").Load()
 				if err != nil {
 					log.Printf("Error occurred while selecting file: %v", err)
@@ -625,7 +669,6 @@ func loop() {
 						copiedPath = browserPath + "/" + entry.Name
 						isCut = true
 					}
-
 					if imgui.MenuItemBool("Delete") {
 						if copiedPath == browserPath+"/"+entry.Name {
 							copiedPath = ""
@@ -654,6 +697,7 @@ func loop() {
 					}
 
 					if imgui.MenuItemBool("Download") {
+						showTransfersWindow = true
 						serverPath := browserPath + "/" + entry.Name
 						size := entry.Size
 

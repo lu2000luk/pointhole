@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-const chunkSize = 2 * 1024 * 1024 // 2 MB
-const chunkInterval = 400         // milliseconds
+const chunkSize = 0.5 * 1024 * 1024 // 0.5 MB
+const chunkInterval = 50            // milliseconds
 
 func UploadFile(clientPath string, serverPath string, uploadTransfers *map[string]string, windowTransfers *map[string]OngoingTransfer) error {
 	data, err := os.Stat(clientPath)
