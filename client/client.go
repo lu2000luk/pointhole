@@ -551,8 +551,24 @@ func loop() {
 				if err != nil {
 					log.Printf("Error occurred while selecting file: %v", err)
 				} else {
+					info, err := os.Stat(filename)
+					if err != nil {
+						log.Printf("Error occurred while getting file info: %v", err)
+						return
+					}
+					if info.IsDir() {
+						log.Printf("Selected path is a directory, only files are allowed: %s", filename)
+						return
+					}
+
+					if info.Size() > 500*1024*1024 { // 500MB
+						dialog.Message("No.")
+						log.Printf("Selected file is too large (%s), max allowed size is 500 MB", BytesToReadable(int(info.Size())))
+						return
+					}
+
 					serverPath := browserPath + "/" + filename[strings.LastIndex(filename, "/")+1:]
-					err := UploadFile(filename, serverPath, &upload_transfers, &ongoingTransfers)
+					err = UploadFile(filename, serverPath, &upload_transfers, &ongoingTransfers)
 					if err != nil {
 						log.Printf("Error uploading file: %v", err)
 					}

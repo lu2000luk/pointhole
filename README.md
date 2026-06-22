@@ -15,6 +15,10 @@ Server software at https://git.lu2000luk.com/lu2000luk/end2end (all packets are 
 
 Websockets.
 
+## Don't move large files with this!
+
+Read and writes are mainly for editing small files such as configs. Large files are supported but the speed is capped at less than 4mbps and errors might occour.
+
 ## Planned
 
 - Full packet support
