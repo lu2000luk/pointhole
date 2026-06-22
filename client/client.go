@@ -186,7 +186,12 @@ func SendCommand(command Command) {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Sending payload: %+v\n", command)
+	if len(payload) < 512*1024 {
+		fmt.Printf("Sending payload: %+v\n", command)
+	} else {
+		fmt.Printf("[LIMITED LOGGING] Sending payload of size %d bytes\n", len(payload))
+	}
+
 	payloadEncrypted, err := Encrypt(payload, pass)
 
 	if err != nil {
