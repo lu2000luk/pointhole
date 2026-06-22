@@ -190,6 +190,50 @@ func RandomRead(serverPath string, start, end int64, getTransfers *map[string]st
 	return data.Content, nil
 }
 
+func RandomWrite(serverPath string, start, end int64, data []byte, uploadTransfers *map[string]string) error {
+	if start > end {
+		return fmt.Errorf("Invalid range: start (%d) is greater than end (%d)", start, end)
+	}
+
+	if end-start+1 > 8*1024*1024 { // server limit is 10mb but we set a lower limit to avoid issues
+		return fmt.Errorf("Requested range exceeds maximum chunk size of %d bytes", 8*1024*1024)
+	}
+
+	id := GetKeyByValue((*uploadTransfers), serverPath)
+	if id == "" {
+		SendCommand(Command{
+			Command: "upload",
+			Target:  serverPath,
+		})
+
+		err := WaitAndRetryForID(serverPath, uploadTransfers, 0)
+		if err != nil {
+			return err
+		}
+	}
+
+	command := Command{
+		Command: "uploadChunk",
+		Target:  serverPath,
+		UploadData: TransferChunk{
+			TransferId: id,
+			Type:       "uploadChunk",
+			Content:    data,
+			IsEnd:      len(data) < chunkSize,
+			Chunkrange: TransferChunkRange{
+				RangeStart: start,
+				RangeEnd:   end,
+			},
+		},
+	}
+
+	SendCommand(command)
+
+	log.Printf("Uploaded chunk %d-%d of %s\n", start, end, serverPath)
+
+	return nil
+}
+
 func DownloadFile(serverPath string, localPath string, size int64, getTransfers *map[string]string, requestedChunks *[]ReqResRandChunk, requestedChunksResponse *map[ReqResRandChunk]TransferChunk) error {
 	var offset int64 = 0
 	for offset < size {
