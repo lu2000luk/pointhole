@@ -61,3 +61,21 @@ func GetKeyByValue(m map[string]string, value string) string {
 	}
 	return ""
 }
+
+func IsRandomChunkRequested(transferId string, chunkRange TransferChunkRange, requestedChunks []ReqResRandChunk) bool {
+	for _, req := range requestedChunks {
+		if req.TransferId == transferId && req.Chunkrange == chunkRange {
+			return true
+		}
+	}
+	return false
+}
+
+func FindMatchingRequest(transferId string, chunkRange TransferChunkRange, requestedChunks []ReqResRandChunk) *ReqResRandChunk {
+	for _, req := range requestedChunks {
+		if req.TransferId == transferId && req.Chunkrange.RangeStart == chunkRange.RangeStart {
+			return &req
+		}
+	}
+	return nil
+}

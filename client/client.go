@@ -112,6 +112,14 @@ var emulatedFS = make(map[string][]LSResponseEntry)
 var get_transfers = make(map[string]string)    // [id]:[path]
 var upload_transfers = make(map[string]string) // [id]:[path]
 
+type ReqResRandChunk struct {
+	TransferId string             `json:"id"`
+	Chunkrange TransferChunkRange `json:"r"`
+}
+
+var requested_random_chunk = []ReqResRandChunk{}
+var requested_random_chunk_response = make(map[ReqResRandChunk]TransferChunk)
+
 // transfers window
 type OngoingTransfer struct {
 	TransferId string
@@ -139,6 +147,11 @@ var showInfoMenu bool = false
 var showTransferDebugger bool = false
 var transferClientPath = ""
 var transferServerPath = ""
+var showRandomReadWindow bool = false
+var randomReadPath = ""
+var randomReadStart int32 = 0
+var randomReadEnd int32 = 0
+var randomReadContent atomic.Value // stores []byte
 
 func loadConn() *websocket.Conn {
 	return (*websocket.Conn)(atomic.LoadPointer(&c))
@@ -169,7 +182,6 @@ func SendCommand(command Command) {
 
 	fmt.Printf("Sending payload: %+v\n", command)
 	payloadEncrypted, err := Encrypt(payload, pass)
-	fmt.Printf("Encrypted payload: %x\n", payloadEncrypted)
 
 	if err != nil {
 		log.Fatal(err)
@@ -300,13 +312,27 @@ func readLoop(conn *websocket.Conn) {
 			get_transfers[getTemplate.TransferId] = getTemplate.Path
 
 		case "getChunk":
-			getChunkTemplate := GETChunkResponse{}
-			_ = json.Unmarshal(decrypted, &getChunkTemplate)
+			chunkData := TransferChunk{}
+			_ = json.Unmarshal(decrypted, &chunkData)
 
-			path := get_transfers[getChunkTemplate.TransferId]
+			path := get_transfers[chunkData.TransferId]
 			if path == "" {
-				log.Println("No transfer found for id:", getChunkTemplate.TransferId)
+				log.Println("No transfer found for id:", chunkData.TransferId)
 				continue
+			}
+
+			matchedReq := FindMatchingRequest(chunkData.TransferId, chunkData.Chunkrange, requested_random_chunk)
+			if matchedReq != nil {
+				requested_random_chunk_response[*matchedReq] = chunkData
+
+				for i, req := range requested_random_chunk {
+					if req == *matchedReq {
+						requested_random_chunk = append(requested_random_chunk[:i], requested_random_chunk[i+1:]...)
+						break
+					}
+				}
+			} else {
+				log.Println("Random chunk not requested for id:", chunkData.TransferId)
 			}
 
 		case "upload":
@@ -354,6 +380,10 @@ func loop() {
 				if imgui.MenuItemBool("Show transfer debugger") {
 					showTransferDebugger = true
 				}
+				if imgui.MenuItemBool("Show random read window") {
+					showRandomReadWindow = true
+				}
+
 				imgui.EndMenu()
 			}
 			imgui.EndMenuBar()
@@ -362,6 +392,33 @@ func loop() {
 	imgui.End()
 
 	if connected {
+
+		if showRandomReadWindow {
+			if imgui.BeginV("Random Read Window", &showRandomReadWindow, imgui.WindowFlagsNone) {
+				imgui.InputTextWithHint("##randomReadPath", "Path...", &randomReadPath, 0, nil)
+				imgui.InputInt("Start", &randomReadStart)
+				imgui.InputInt("End", &randomReadEnd)
+
+				if imgui.Button("Request Random Read") {
+					go func() {
+						log.Printf("Requesting random read for %s from %d to %d\n", randomReadPath, randomReadStart, randomReadEnd)
+						res, err := RandomRead(randomReadPath, int64(randomReadStart), int64(randomReadEnd), &get_transfers, &requested_random_chunk, &requested_random_chunk_response)
+						if err != nil {
+							log.Printf("Error requesting random read: %v\n", err)
+							return
+						}
+						randomReadContent.Store(res)
+					}()
+				}
+
+				if val := randomReadContent.Load(); val != nil {
+					content := val.([]byte)
+					imgui.Text(fmt.Sprintf("Received content (%d bytes):", len(content)))
+					imgui.Text(string(content))
+				}
+			}
+			imgui.End()
+		}
 
 		if showTransferDebugger {
 			if imgui.BeginV("TransferDebugger", &showTransferDebugger, imgui.WindowFlagsNone) {

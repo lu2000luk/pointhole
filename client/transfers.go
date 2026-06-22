@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-const chunkSize = 1024 * 1024 // 1 MB
-const chunkInterval = 500     // milliseconds
+const chunkSize = 2 * 1024 * 1024 // 2 MB
+const chunkInterval = 400         // milliseconds
 
 func UploadFile(clientPath string, serverPath string, uploadTransfers *map[string]string, windowTransfers *map[string]OngoingTransfer) error {
 	data, err := os.Stat(clientPath)
@@ -98,4 +98,87 @@ func UploadFile(clientPath string, serverPath string, uploadTransfers *map[strin
 		}
 	}()
 	return nil
+}
+
+func WaitAndRetryForID(path string, transfers *map[string]string, failures int) error {
+	if failures > 40 {
+		log.Printf("Failed to get transfer ID for %s after 40 attempts\n", path)
+		return fmt.Errorf("failed to get transfer ID for %s", path)
+	}
+	time.Sleep(200 * time.Millisecond)
+	if GetKeyByValue((*transfers), path) == "" {
+		return WaitAndRetryForID(path, transfers, failures+1)
+	}
+
+	return nil
+}
+
+func WaitAndRetryForRandomChunk(req ReqResRandChunk, requestedChunksResponse *map[ReqResRandChunk]TransferChunk, failures int) error {
+	if failures > 40 {
+		log.Printf("Failed to get transfer ID for %s after 40 attempts\n", req.TransferId)
+		return fmt.Errorf("failed to get transfer ID for %s", req.TransferId)
+	}
+	time.Sleep(200 * time.Millisecond)
+
+	if _, exists := (*requestedChunksResponse)[req]; !exists {
+		return WaitAndRetryForRandomChunk(req, requestedChunksResponse, failures+1)
+	}
+
+	return nil
+}
+
+func RandomRead(serverPath string, start, end int64, getTransfers *map[string]string, requestedChunks *[]ReqResRandChunk, requestedChunksResponse *map[ReqResRandChunk]TransferChunk) ([]byte, error) {
+	if start > end {
+		return nil, fmt.Errorf("Invalid range: start (%d) is greater than end (%d)", start, end)
+	}
+
+	if end-start+1 > 8*1024*1024 { // server limit is 10mb but we set a lower limit to avoid issues
+		return nil, fmt.Errorf("Requested range exceeds maximum chunk size of %d bytes", 8*1024*1024)
+	}
+
+	id := GetKeyByValue((*getTransfers), serverPath)
+	if id == "" {
+		SendCommand(Command{
+			Command: "get",
+			Target:  serverPath,
+		})
+
+		err := WaitAndRetryForID(serverPath, getTransfers, 0)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	id = GetKeyByValue((*getTransfers), serverPath)
+
+	command := Command{
+		Command: "getChunk",
+		Target:  id,
+		GetChunkRange: TransferChunkRange{
+			RangeStart: start,
+			RangeEnd:   end,
+		},
+	}
+
+	req := ReqResRandChunk{
+		TransferId: id,
+		Chunkrange: TransferChunkRange{
+			RangeStart: start,
+			RangeEnd:   end,
+		},
+	}
+
+	(*requestedChunks) = append((*requestedChunks), req)
+
+	SendCommand(command)
+
+	err := WaitAndRetryForRandomChunk(req, requestedChunksResponse, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	data := (*requestedChunksResponse)[req]
+	delete(*requestedChunksResponse, req)
+
+	return data.Content, nil
 }
