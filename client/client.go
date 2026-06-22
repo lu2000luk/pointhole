@@ -17,6 +17,7 @@ import (
 	"github.com/AllenDang/cimgui-go/imgui"
 	_ "github.com/AllenDang/cimgui-go/impl/glfw"
 	"github.com/gorilla/websocket"
+	"github.com/sqweek/dialog"
 )
 
 var host = "67worker.lu2000luk.com"
@@ -520,6 +521,21 @@ func loop() {
 				}
 
 				pathInput = browserPath
+			}
+
+			imgui.SameLine()
+
+			if imgui.Button("Upload") {
+				filename, err := dialog.File().Title("Select file to upload").Load()
+				if err != nil {
+					log.Printf("Error occurred while selecting file: %v", err)
+				} else {
+					serverPath := browserPath + "/" + filename[strings.LastIndex(filename, "/")+1:]
+					err := UploadFile(filename, serverPath, &upload_transfers, &ongoingTransfers)
+					if err != nil {
+						log.Printf("Error uploading file: %v", err)
+					}
+				}
 			}
 
 			if copiedPath != "" {

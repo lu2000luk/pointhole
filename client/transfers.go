@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -92,6 +93,13 @@ func UploadFile(clientPath string, serverPath string, uploadTransfers *map[strin
 				}
 
 				if len(chunk) < chunkSize {
+					go func() {
+						time.Sleep(1 * time.Second)
+						SendCommand(Command{
+							Command: "ls",
+							Target:  serverPath[:strings.LastIndex(serverPath, "/")],
+						})
+					}()
 					return
 				}
 			}
