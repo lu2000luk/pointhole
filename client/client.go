@@ -644,15 +644,7 @@ func loop() {
 						showUI = false
 					}
 
-					imgui.EndPopup()
-				}
-
-				if entry.Folder == false {
-					imgui.SameLine()
-					imgui.Text(BytesToReadable(int(entry.Size)))
-					imgui.SameLine()
-					imgui.PushIDStr("##edit_" + entry.Name)
-					if imgui.Button("Edit") {
+					if imgui.MenuItemBool("Edit") {
 						serverPath := browserPath + "/" + entry.Name
 						size := entry.Size
 						go func() {
@@ -660,7 +652,31 @@ func loop() {
 							OpenInEditor(serverPath, size, &upload_transfers, &ongoingTransfers, &get_transfers, &requested_random_chunk, &requested_random_chunk_response)
 						}()
 					}
-					imgui.PopID()
+
+					if imgui.MenuItemBool("Download") {
+						serverPath := browserPath + "/" + entry.Name
+						size := entry.Size
+
+						filename, err := dialog.File().Title("Select download location").Save()
+						if err != nil {
+							log.Printf("Error occurred while selecting download location: %v", err)
+						}
+
+						go func() {
+							log.Printf("Downloading file: %s to %s\n", serverPath, filename)
+							err := DownloadFile(serverPath, filename, size, &get_transfers, &requested_random_chunk, &requested_random_chunk_response)
+							if err != nil {
+								log.Printf("Error downloading file: %v\n", err)
+							}
+						}()
+					}
+
+					imgui.EndPopup()
+				}
+
+				if entry.Folder == false {
+					imgui.SameLine()
+					imgui.Text(BytesToReadable(int(entry.Size)))
 				}
 
 				imgui.Separator()
