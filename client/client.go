@@ -562,7 +562,7 @@ func loop() {
 					}
 
 					if info.Size() > 500*1024*1024 { // 500MB
-						dialog.Message("No.")
+						dialog.Message("No.").Title("File too large").Info()
 						log.Printf("Selected file is too large (%s), max allowed size is 500 MB", BytesToReadable(int(info.Size())))
 						return
 					}
