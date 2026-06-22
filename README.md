@@ -21,6 +21,7 @@ Read and writes are mainly for editing small files such as configs. Large files 
 
 ## Planned
 
-- Full packet support
+- Folder context menu
+- Create folder
 - QoL (Upload to pastebin, integrated terminal, explorer tabs/favourites)
 - FUSE filesystemilesystem
