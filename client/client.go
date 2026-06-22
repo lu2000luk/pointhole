@@ -144,6 +144,10 @@ var isRenaming bool = false
 var renamingPath string = ""
 var renamingNewName string = ""
 
+var isCreatingDir bool = false
+var creatingDirPath string = ""
+var creatingDirName string = ""
+
 // packet debugger window
 var commandName = ""
 var commandTarget = ""
@@ -426,6 +430,26 @@ func loop() {
 		imgui.End()
 	}
 
+	if isCreatingDir {
+		if imgui.BeginV("Create Directory", nil, imgui.WindowFlagsNoResize|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoMove) {
+			imgui.InputTextWithHint("##dirname", "Directory name...", &creatingDirName, imgui.InputTextFlagsEnterReturnsTrue, nil)
+			if imgui.Button("Create") {
+				SendCommand(Command{
+					Target:  browserPath + "/" + creatingDirName,
+					Command: "mkdir",
+				})
+				isCreatingDir = false
+				showUI = true
+			}
+			imgui.SameLine()
+			if imgui.Button("Cancel") {
+				isCreatingDir = false
+				showUI = true
+			}
+		}
+		imgui.End()
+	}
+
 	if connected && showUI {
 		if showTransfersWindow {
 			imgui.SetNextWindowSizeV(imgui.Vec2{200, 100}, imgui.CondAppearing)
@@ -545,7 +569,7 @@ func loop() {
 			imgui.End()
 		}
 
-		imgui.SetNextWindowSizeV(imgui.Vec2{500, 400}, imgui.CondAppearing)
+		imgui.SetNextWindowSizeV(imgui.Vec2{800, 400}, imgui.CondAppearing)
 		if imgui.Begin("Browser") {
 			if browserPath != sentLSPacketFor {
 				SendCommand(Command{
@@ -625,6 +649,15 @@ func loop() {
 				}
 			}
 
+			imgui.SameLine()
+
+			if imgui.Button("New Folder") {
+				isCreatingDir = true
+				creatingDirPath = browserPath
+				creatingDirName = ""
+				showUI = false
+			}
+
 			if copiedPath != "" {
 				imgui.SameLine()
 				if imgui.Button("Paste") {
@@ -692,32 +725,34 @@ func loop() {
 						showUI = false
 					}
 
-					if imgui.MenuItemBool("Edit") {
-						serverPath := browserPath + "/" + entry.Name
-						size := entry.Size
-						go func() {
-							log.Printf("Opening file in editor: %s\n", serverPath)
-							OpenInEditor(serverPath, size, &upload_transfers, &ongoingTransfers, &get_transfers, &requested_random_chunk, &requested_random_chunk_response)
-						}()
-					}
-
-					if imgui.MenuItemBool("Download") {
-						showTransfersWindow = true
-						serverPath := browserPath + "/" + entry.Name
-						size := entry.Size
-
-						filename, err := dialog.File().Title("Select download location").Save()
-						if err != nil {
-							log.Printf("Error occurred while selecting download location: %v", err)
+					if entry.Folder == false {
+						if imgui.MenuItemBool("Edit") {
+							serverPath := browserPath + "/" + entry.Name
+							size := entry.Size
+							go func() {
+								log.Printf("Opening file in editor: %s\n", serverPath)
+								OpenInEditor(serverPath, size, &upload_transfers, &ongoingTransfers, &get_transfers, &requested_random_chunk, &requested_random_chunk_response)
+							}()
 						}
 
-						go func() {
-							log.Printf("Downloading file: %s to %s\n", serverPath, filename)
-							err := DownloadFile(serverPath, filename, size, &get_transfers, &requested_random_chunk, &requested_random_chunk_response)
+						if imgui.MenuItemBool("Download") {
+							showTransfersWindow = true
+							serverPath := browserPath + "/" + entry.Name
+							size := entry.Size
+
+							filename, err := dialog.File().Title("Select download location").Save()
 							if err != nil {
-								log.Printf("Error downloading file: %v\n", err)
+								log.Printf("Error occurred while selecting download location: %v", err)
 							}
-						}()
+
+							go func() {
+								log.Printf("Downloading file: %s to %s\n", serverPath, filename)
+								err := DownloadFile(serverPath, filename, size, &get_transfers, &requested_random_chunk, &requested_random_chunk_response)
+								if err != nil {
+									log.Printf("Error downloading file: %v\n", err)
+								}
+							}()
+						}
 					}
 
 					imgui.EndPopup()
