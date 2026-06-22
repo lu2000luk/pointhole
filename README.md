@@ -20,3 +20,4 @@ Websockets.
 - Full packet support
 - Text editor
 - QoL (Upload to pastebin, integrated terminal, explorer tabs/favourites)
+- FUSE filesystem

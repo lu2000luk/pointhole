@@ -103,6 +103,8 @@ var reconnectStop = make(chan struct{})
 var connected bool = false
 var reconnecting bool = false
 
+var showUI bool = true
+
 var copiedPath string = ""
 var isCut bool = false
 
@@ -391,8 +393,7 @@ func loop() {
 	}
 	imgui.End()
 
-	if connected {
-
+	if connected && showUI {
 		if showRandomReadWindow {
 			if imgui.BeginV("Random Read Window", &showRandomReadWindow, imgui.WindowFlagsNone) {
 				imgui.InputTextWithHint("##randomReadPath", "Path...", &randomReadPath, 0, nil)
