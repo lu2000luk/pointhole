@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const blacklisted_editor_extensions = "exe mp3 mp4 avi mkv mov flv wmv mpeg mpg wav aac ogg flac webm m4a m4v 3gp 3g2 swf iso bin img iso dmg vhd vmdk qcow2 ova"
+
 func getEditor() (string, string) {
 	e := os.Getenv("EDITOR")
 	if e == "" || strings.Contains(e, "vim") || strings.Contains(e, "nano") {
@@ -18,6 +20,11 @@ func getEditor() (string, string) {
 }
 
 func OpenInEditor(serverPath string, size int64, RRuploadTransfers *map[string]string, RRwindowTransfers *map[string]OngoingTransfer, RRgetTransfers *map[string]string, RRrequestedChunks *[]ReqResRandChunk, RRrequestedChunksResponse *map[ReqResRandChunk]TransferChunk) {
+	if strings.Contains(blacklisted_editor_extensions, strings.ToLower(serverPath[strings.LastIndex(serverPath, ".")+1:])) {
+		log.Printf("File type is blacklisted for editing: %s\n", serverPath)
+		return
+	}
+
 	editor, editorArgs := getEditor()
 	tempFilePath := "temp_" + GenerateRandomString(5) + "_" + serverPath[strings.LastIndex(serverPath, "/")+1:]
 

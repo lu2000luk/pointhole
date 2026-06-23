@@ -11,7 +11,8 @@ import (
 const chunkSize = 1024 * 1024 // 1 MB
 const chunkInterval = 25      // milliseconds
 
-func UploadFile(clientPath string, serverPath string, uploadTransfers *map[string]string, windowTransfers *map[string]OngoingTransfer) error {
+func UploadFile(FclientPath string, serverPath string, uploadTransfers *map[string]string, windowTransfers *map[string]OngoingTransfer) error {
+	clientPath := FixPathIfWindows(FclientPath)
 	data, err := os.Stat(clientPath)
 	if err != nil {
 		return err
@@ -231,7 +232,9 @@ func RandomWrite(serverPath string, start, end int64, data []byte, uploadTransfe
 	return nil
 }
 
-func DownloadFile(serverPath string, localPath string, size int64, getTransfers *map[string]string, requestedChunks *[]ReqResRandChunk, requestedChunksResponse *map[ReqResRandChunk]TransferChunk) error {
+func DownloadFile(serverPath string, FlocalPath string, size int64, getTransfers *map[string]string, requestedChunks *[]ReqResRandChunk, requestedChunksResponse *map[ReqResRandChunk]TransferChunk) error {
+	localPath := FixPathIfWindows(FlocalPath)
+
 	var offset int64 = 0
 	for offset < size {
 		time.Sleep(80 * time.Millisecond)

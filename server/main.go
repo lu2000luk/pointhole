@@ -228,6 +228,8 @@ func main() {
 				log.Println(prefix+"Invalid packet:", err)
 			}
 
+			log.Printf(prefix+"Message: %s", d)
+
 			if com.Command == "ping" {
 				log.Printf(prefix + "Received ping")
 				resp := GenericResponse{
@@ -243,8 +245,8 @@ func main() {
 				if com.Target == "" {
 					log.Printf(prefix + "Missing path for ls")
 				}
-				log.Printf(prefix+"Received ls command for %s", com.Target)
-				resp := ListDirectory(com.Target)
+				log.Printf(prefix+"Received ls command for %s", FixPathIfWindows(com.Target))
+				resp := ListDirectory(FixPathIfWindows(com.Target))
 
 				MarshallAndSend(resp, c, key)
 			}
@@ -254,8 +256,8 @@ func main() {
 					log.Printf(prefix + "Missing path for rm")
 				}
 
-				log.Printf(prefix+"Received rm command for %s", com.Target)
-				err := os.RemoveAll(com.Target)
+				log.Printf(prefix+"Received rm command for %s", FixPathIfWindows(com.Target))
+				err := os.RemoveAll(FixPathIfWindows(com.Target))
 				resp := GenericResponse{
 					Success: err == nil,
 					Type:    "rm",
@@ -269,8 +271,8 @@ func main() {
 					log.Printf(prefix + "Missing path for mv")
 				}
 
-				log.Printf(prefix+"Received mv command from %s to %s", com.Target, com.Destination)
-				err := os.Rename(com.Target, com.Destination)
+				log.Printf(prefix+"Received mv command from %s to %s", FixPathIfWindows(com.Target), FixPathIfWindows(com.Destination))
+				err := os.Rename(FixPathIfWindows(com.Target), FixPathIfWindows(com.Destination))
 				resp := GenericResponse{
 					Success: err == nil,
 					Type:    "mv",
@@ -284,9 +286,9 @@ func main() {
 					log.Printf(prefix + "Missing path for mkdir")
 				}
 
-				log.Printf(prefix+"Received mkdir command for %s", com.Target)
+				log.Printf(prefix+"Received mkdir command for %s", FixPathIfWindows(com.Target))
 
-				err := os.MkdirAll(com.Target, 0755)
+				err := os.MkdirAll(FixPathIfWindows(com.Target), 0755)
 				resp := GenericResponse{
 					Success: err == nil,
 					Type:    "mkdir",
@@ -307,14 +309,14 @@ func main() {
 					absPath = com.Target // fallback
 				}
 
-				info, err := os.Stat(absPath)
+				info, err := os.Stat(FixPathIfWindows(absPath))
 				if err != nil || info.IsDir() {
-					log.Printf(prefix+"Invalid path for get: %s", absPath)
+					log.Printf(prefix+"Invalid path for get: %s", FixPathIfWindows(absPath))
 					continue
 				}
 
 				transferId := GenerateRandomString(12)
-				transfers[transferId] = absPath
+				transfers[transferId] = FixPathIfWindows(absPath)
 
 				resp := GETResponse{
 					Success:    true,
@@ -335,9 +337,9 @@ func main() {
 					log.Printf(prefix + "Missing DESTINATION path for copy")
 				}
 
-				log.Printf(prefix+"Received copy command from %s to %s", com.Target, com.Destination)
+				log.Printf(prefix+"Received copy command from %s to %s", FixPathIfWindows(com.Target), FixPathIfWindows(com.Destination))
 
-				err := copyFileOrDir(com.Target, com.Destination)
+				err := copyFileOrDir(FixPathIfWindows(com.Target), FixPathIfWindows(com.Destination))
 				resp := GenericResponse{
 					Success: err == nil,
 					Type:    "copy",
@@ -350,11 +352,11 @@ func main() {
 					log.Printf(prefix + "Missing path for upload")
 				}
 
-				log.Printf(prefix+"Received upload command for %s", com.Target)
+				log.Printf(prefix+"Received upload command for %s", FixPathIfWindows(com.Target))
 
-				absPath, err := filepath.Abs(filepath.Clean(com.Target))
+				absPath, err := filepath.Abs(filepath.Clean(FixPathIfWindows(com.Target)))
 				if err != nil {
-					absPath = com.Target // fallback
+					absPath = FixPathIfWindows(com.Target) // fallback
 				}
 
 				info, err := os.Stat(absPath) // dont check for error since the file might not exist yet (for new files)
@@ -451,7 +453,6 @@ func main() {
 				MarshallAndSend(chunkResp, c, key)
 			}
 
-			log.Printf(prefix+"Message: %s", d)
 		}
 	}()
 

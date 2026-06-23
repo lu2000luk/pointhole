@@ -8,6 +8,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/gorilla/websocket"
@@ -132,7 +133,11 @@ func MarshallAndSend(resp any, c *websocket.Conn, key string) {
 	if err != nil {
 		fmt.Println(prefix+"Error while marshalling response:", err)
 	}
-	fmt.Println(string(jsonresp))
+	if len(jsonresp) > 1000 {
+		fmt.Println(prefix + "Response: " + string(jsonresp)[:1000] + "...")
+	} else {
+		fmt.Println(prefix + "Response: " + string(jsonresp))
+	}
 
 	encrypted, err := Encrypt(jsonresp, key)
 	if err != nil {
@@ -143,4 +148,11 @@ func MarshallAndSend(resp any, c *websocket.Conn, key string) {
 	if err != nil {
 		log.Println(prefix+"Error while writing response:", err)
 	}
+}
+
+func FixPathIfWindows(path string) string {
+	if runtime.GOOS == "windows" {
+		return "C:\\" + strings.ReplaceAll(path, "/", "\\")
+	}
+	return path
 }

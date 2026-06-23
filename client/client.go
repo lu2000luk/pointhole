@@ -639,7 +639,7 @@ func loop() {
 						return
 					}
 
-					serverPath := browserPath + "/" + filename[strings.LastIndex(filename, "/")+1:]
+					serverPath := strings.ReplaceAll(browserPath, "\\", "/") + "/" + filename[strings.LastIndex(strings.ReplaceAll(filename, "\\", "/"), "/")+1:]
 					go func() {
 						err = UploadFile(filename, serverPath, &upload_transfers, &ongoingTransfers)
 						if err != nil {
@@ -700,34 +700,34 @@ func loop() {
 
 				if imgui.BeginPopupContextItem() {
 					if imgui.MenuItemBool("Copy") {
-						copiedPath = browserPath + "/" + entry.Name
+						copiedPath = strings.ReplaceAll(browserPath, "\\", "/") + "/" + entry.Name
 						isCut = false
 					}
 					if imgui.MenuItemBool("Cut") {
-						copiedPath = browserPath + "/" + entry.Name
+						copiedPath = strings.ReplaceAll(browserPath, "\\", "/") + "/" + entry.Name
 						isCut = true
 					}
 					if imgui.MenuItemBool("Delete") {
-						if copiedPath == browserPath+"/"+entry.Name {
+						if copiedPath == strings.ReplaceAll(browserPath, "\\", "/")+"/"+entry.Name {
 							copiedPath = ""
 						}
 
 						SendCommand(Command{
-							Target:  browserPath + "/" + entry.Name,
+							Target:  strings.ReplaceAll(browserPath, "\\", "/") + "/" + entry.Name,
 							Command: "rm",
 						})
 					}
 
 					if imgui.MenuItemBool("Rename") {
 						isRenaming = true
-						renamingPath = browserPath + "/" + entry.Name
+						renamingPath = strings.ReplaceAll(browserPath, "\\", "/") + "/" + entry.Name
 						renamingNewName = entry.Name
 						showUI = false
 					}
 
 					if entry.Folder == false {
 						if imgui.MenuItemBool("Edit") {
-							serverPath := browserPath + "/" + entry.Name
+							serverPath := strings.ReplaceAll(browserPath, "\\", "/") + "/" + entry.Name
 							size := entry.Size
 							go func() {
 								log.Printf("Opening file in editor: %s\n", serverPath)
@@ -737,7 +737,7 @@ func loop() {
 
 						if imgui.MenuItemBool("Download") {
 							showTransfersWindow = true
-							serverPath := browserPath + "/" + entry.Name
+							serverPath := strings.ReplaceAll(browserPath, "\\", "/") + "/" + entry.Name
 							size := entry.Size
 
 							filename, err := dialog.File().Title("Select download location").Save()
@@ -812,5 +812,6 @@ func main() {
 		}
 	}()
 
+	currentBackend.SetTargetFPS(60)
 	currentBackend.Run(loop)
 }

@@ -4,6 +4,7 @@ import (
 	"io"
 	"math/rand/v2"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -78,4 +79,11 @@ func FindMatchingRequest(transferId string, chunkRange TransferChunkRange, reque
 		}
 	}
 	return nil
+}
+
+func FixPathIfWindows(path string) string {
+	if runtime.GOOS == "windows" {
+		return strings.ReplaceAll(path, "/", "\\")
+	}
+	return path
 }
