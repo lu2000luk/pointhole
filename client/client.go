@@ -936,6 +936,10 @@ func pushStyles() {
 	style.SetColors(&colors)
 }
 
+func init() { // this runs before main??? go magic...
+	runtime.LockOSThread()
+}
+
 func main() {
 	log.SetFlags(0)
 	signal.Notify(interrupt, os.Interrupt)

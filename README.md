@@ -57,10 +57,6 @@ Built with Go.
 
 Server software at https://git.lu2000luk.com/lu2000luk/end2end (all packets are encrypted)
 
-## Known bugs
-
-On Windows sometimes when opening client it might freeze, don't worry: just kill the process and reopen it.
-
 ## How does it do it
 
 Websockets.
