@@ -38,7 +38,7 @@ jobs:
         env:
           CGO_ENABLED: 1
         run: |
-          go build -v -o client-linux-amd64 .
+          go build -v -o client .
       - name: Upload Linux binary
         uses: ryand56/r2-upload-action@latest
         with:
@@ -46,7 +46,7 @@ jobs:
           r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
           r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           r2-bucket: ${{ secrets.R2_BUCKET }}
-          source-dir: client/client-linux-amd64
+          source-dir: client/client
           destination-dir: pointhole/client
           output-file-url: true
 
@@ -67,7 +67,7 @@ jobs:
         env:
           CGO_ENABLED: 1
         run: |
-          go build -v -o client-windows-amd64.exe .
+          go build -v -o client.exe .
       - name: Upload Windows binary
         uses: ryand56/r2-upload-action@latest
         with:
@@ -75,6 +75,6 @@ jobs:
           r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
           r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           r2-bucket: ${{ secrets.R2_BUCKET }}
-          source-dir: client/client-windows-amd64.exe
+          source-dir: client/client.exe
           destination-dir: pointhole/client
           output-file-url: true
