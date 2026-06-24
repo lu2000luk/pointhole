@@ -2,6 +2,10 @@
 
 An easy way to browse and transfer files from your ssh/terminal based access to a nice GUI. No FTP or port forwarding!
 
+## Demo
+
+We provide a demo instance for you to try out the program (demo instance resets every 30 mins). Code to connect to it: `DEMO67676767`
+
 ## Installation
 
 ### Client
@@ -39,10 +43,6 @@ The installers will provide you with instructions on how to run the programs.
 Client: [Linux](https://cdn.lu2000luk.com/pointhole/client/client) or [Windows](https://cdn.lu2000luk.com/pointhole/client/client.exe)
 
 Server: [Linux](https://cdn.lu2000luk.com/pointhole/server/server) or [Windows](https://cdn.lu2000luk.com/pointhole/server/server.exe)
-
-## Demo
-
-We provide a demo instance for you to try out the program (demo instance resets every 30 mins). Code to connect to it: `DEMO67676767`
 
 ## Support
 
