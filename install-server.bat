@@ -27,3 +27,4 @@ goto end
 :end
 endlocal
 cd /d %~dp0
+pause
