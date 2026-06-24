@@ -41,6 +41,8 @@ func OpenInEditor(serverPath string, size int64, RRuploadTransfers *map[string]s
 
 	tempFilePath = tempFolder + tempFilePath
 
+	log.Printf("Downloading file from server: %s to temporary file: %s\n", serverPath, tempFilePath)
+
 	err := DownloadFile(serverPath, tempFilePath, size, RRgetTransfers, RRrequestedChunks, RRrequestedChunksResponse)
 	if err != nil {
 		log.Printf("Error downloading file: %v\n", err)
