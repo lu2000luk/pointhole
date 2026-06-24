@@ -1,26 +1,37 @@
 name: Build Server Binary
- 
+
 on:
   push:
     branches: ["master"]
     paths:
       - 'server/**.go'
       - '.github/workflows/server.yml'
- 
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            binary: server
+          - goos: windows
+            goarch: amd64
+            binary: server.exe
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
- 
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version-file: 'server/go.mod'
           cache: true
           cache-dependency-path: 'server/go.sum'
- 
+
       - name: Cache Go build cache
         uses: actions/cache@v4
         with:
@@ -28,11 +39,16 @@ jobs:
           key: ${{ runner.os }}-go-build-server-${{ hashFiles('server/**.go') }}
           restore-keys: |
             ${{ runner.os }}-go-build-server-
- 
+
       - name: Build server binary
-        run: go build -o server .
         working-directory: ./server
- 
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          go build -o ${{ matrix.binary }} .
+
       - name: Upload binary to R2
         uses: ryand56/r2-upload-action@latest
         with:
@@ -40,7 +56,7 @@ jobs:
           r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
           r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           r2-bucket: ${{ secrets.R2_BUCKET }}
-          source-dir: server/server
-          destination-dir: pointhole
+          source-dir: server/${{ matrix.binary }}
+          destination-dir: pointhole/server
           output-file-url: true
           multipart-size: 50
