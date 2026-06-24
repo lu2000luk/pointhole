@@ -136,6 +136,9 @@ var ongoingTransfers = make(map[string]OngoingTransfer) // [id]:[ongoingTransfer
 var showTransfersWindow bool = false
 
 // browser window
+
+var calcH float32 = 0
+
 var browserPath = "/"
 var sentLSPacketFor = ""
 var pathInput = browserPath
@@ -367,6 +370,16 @@ func readLoop(conn *websocket.Conn) {
 	}
 }
 
+func openFolder(entry LSResponseEntry) {
+	if strings.HasSuffix(browserPath, "/") {
+		browserPath = browserPath + entry.Name
+		pathInput = browserPath
+	} else {
+		browserPath = browserPath + "/" + entry.Name
+		pathInput = browserPath
+	}
+}
+
 func loop() {
 	imgui.ClearSizeCallbackPool()
 
@@ -574,12 +587,21 @@ func loop() {
 
 				imgui.Text(fmt.Sprintf("ShowInfoMenu: %v", showInfoMenu))
 				imgui.Text(fmt.Sprintf("ShowPacketDebugger: %v", showPacketDebugger))
+
+				RenderIconButton("##info_refreshicon", DrawIconRefresh, 32, 30)
+				imgui.SameLine()
+				RenderIconButton("##info_uploadicon", DrawIconUpload, 32, 30)
+
+				RenderIconButton("##info_lefticon", DrawIconChevronLeft, 32, 30)
+				imgui.SameLine()
+				RenderIconButton("##info_createfoldericon", DrawIconFolderPlus, 32, 30)
 			}
 			imgui.End()
 		}
 
 		imgui.SetNextWindowSizeV(imgui.Vec2{800, 400}, imgui.CondAppearing)
 		if imgui.Begin("Browser") {
+
 			if browserPath != sentLSPacketFor {
 				SendCommand(Command{
 					Target:  browserPath,
@@ -588,6 +610,17 @@ func loop() {
 
 				sentLSPacketFor = browserPath
 			}
+
+			if RenderIconButton("##backicon", DrawIconChevronLeft, calcH, calcH-2) {
+				browserPath = browserPath[0:strings.LastIndex(browserPath, "/")]
+				if browserPath == "" {
+					browserPath = "/"
+				}
+
+				pathInput = browserPath
+			}
+
+			imgui.SameLine()
 
 			if imgui.InputTextWithHint("##pathInput", "/", &pathInput, imgui.InputTextFlagsEnterReturnsTrue, nil) {
 				if pathInput == "" {
@@ -606,7 +639,7 @@ func loop() {
 
 			imgui.SameLine()
 
-			if imgui.Button("Refresh") {
+			if RenderIconButton("##refreshicon", DrawIconRefresh, calcH, calcH-4) {
 				SendCommand(Command{
 					Target:  browserPath,
 					Command: "ls",
@@ -615,18 +648,7 @@ func loop() {
 
 			imgui.SameLine()
 
-			if imgui.Button("^") {
-				browserPath = browserPath[0:strings.LastIndex(browserPath, "/")]
-				if browserPath == "" {
-					browserPath = "/"
-				}
-
-				pathInput = browserPath
-			}
-
-			imgui.SameLine()
-
-			if imgui.Button("Upload") {
+			if RenderIconButton("##uploadicon", DrawIconUpload, calcH, calcH-4) {
 				showTransfersWindow = true
 				filename, err := dialog.File().Title("Select file to upload").Load()
 				if err != nil {
@@ -660,7 +682,7 @@ func loop() {
 
 			imgui.SameLine()
 
-			if imgui.Button("New Folder") {
+			if RenderIconButton("##createfoldericon", DrawIconFolderPlus, calcH, calcH-2) {
 				isCreatingDir = true
 				creatingDirPath = browserPath
 				creatingDirName = ""
@@ -694,14 +716,12 @@ func loop() {
 
 			for _, entry := range emulatedEntry {
 				if entry.Folder == true {
-					if imgui.Button(entry.Name + " >") {
-						if strings.HasSuffix(browserPath, "/") {
-							browserPath = browserPath + entry.Name
-							pathInput = browserPath
-						} else {
-							browserPath = browserPath + "/" + entry.Name
-							pathInput = browserPath
-						}
+					if RenderIconButton("##foldericon_"+entry.Name, DrawIconFolder, calcH, calcH-3) {
+						openFolder(entry)
+					}
+					imgui.SameLine()
+					if imgui.Button(entry.Name) {
+						openFolder(entry)
 					}
 				} else {
 					imgui.Button(entry.Name)
@@ -785,6 +805,8 @@ func loop() {
 		imgui.SetWindowPosStr("Connect", imgui.Vec2{viewport.X / 2, viewport.Y / 2})
 
 		imgui.SetWindowSizeStr("Title Bar", imgui.Vec2{viewport.X, 0})
+
+		calcH = imgui.GetFontBaked().Size() + (imgui.CurrentStyle().FramePadding().Y * 2)
 
 		pushStyles()
 
