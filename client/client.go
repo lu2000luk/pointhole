@@ -6,7 +6,9 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"os/exec"
 	"os/signal"
+	"runtime"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -134,6 +136,7 @@ type OngoingTransfer struct {
 var ratransfers = []string{}                            // [path] (random access transfers, only added to the list when the transfer is getting an access, IDs arent used here as the access can be either get or upload)
 var ongoingTransfers = make(map[string]OngoingTransfer) // [id]:[ongoingTransfer]
 var showTransfersWindow bool = false
+var showAboutWindow bool = false
 
 // browser window
 
@@ -419,6 +422,10 @@ func loop() {
 					showRandomReadWindow = true
 				}
 
+				if imgui.MenuItemBool("About") {
+					showAboutWindow = true
+				}
+
 				imgui.EndMenu()
 			}
 
@@ -447,6 +454,30 @@ func loop() {
 				})
 				isRenaming = false
 				showUI = true
+			}
+		}
+		imgui.End()
+	}
+
+	if showAboutWindow {
+		if imgui.BeginV("About", &showAboutWindow, imgui.WindowFlagsAlwaysAutoResize) {
+			imgui.Text("Pointhole")
+			imgui.Spacing()
+			imgui.Text("Made with love by @lu2000luk")
+			imgui.Spacing()
+			if imgui.Button("Source code") {
+				var cmd *exec.Cmd
+				switch runtime.GOOS {
+				case "windows":
+					cmd = exec.Command("cmd.exe", "/c", "start", "https://git.lu2000luk.com/lu2000luk/pointhole")
+				case "darwin":
+					cmd = exec.Command("open", "https://git.lu2000luk.com/lu2000luk/pointhole")
+				default:
+					cmd = exec.Command("xdg-open", "https://git.lu2000luk.com/lu2000luk/pointhole")
+				}
+				if err := cmd.Start(); err != nil {
+					log.Printf("Failed to open URL: %v", err)
+				}
 			}
 		}
 		imgui.End()
