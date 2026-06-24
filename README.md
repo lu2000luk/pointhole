@@ -9,7 +9,7 @@ An easy way to browse and transfer files from your ssh/terminal based access to 
 On Windows:
 
 ```bat
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest https://raw.githubusercontent.com/lu2000luk/pointhole/master/install-client.bat -OutFile install-client.bat; Start-Process cmd.exe -ArgumentList '/c install-client.bat' -Wait; Remove-Item install-client.bat;"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/lu2000luk/pointhole/master/install-client.ps1 | iex"
 ```
 
 On Linux/MacOS:
@@ -23,7 +23,7 @@ curl -fsSL https://raw.githubusercontent.com/lu2000luk/pointhole/master/install-
 On Windows:
 
 ```bat
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest https://raw.githubusercontent.com/lu2000luk/pointhole/master/install-server.bat -OutFile install-server.bat; Start-Process cmd.exe -ArgumentList '/c install-server.bat' -Wait; Remove-Item install-server.bat";
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/lu2000luk/pointhole/master/install-server.ps1 | iex"
 ```
 
 On Linux/MacOS:
