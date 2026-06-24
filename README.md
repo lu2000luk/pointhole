@@ -40,10 +40,13 @@ Client: [Linux](https://cdn.lu2000luk.com/pointhole/client/client) or [Windows](
 
 Server: [Linux](https://cdn.lu2000luk.com/pointhole/server/server) or [Windows](https://cdn.lu2000luk.com/pointhole/server/server.exe)
 
-
 ## Demo
 
 We provide a demo instance for you to try out the program (demo instance resets every 30 mins). Code to connect to it: `DEMO67676767`
+
+## Support
+
+Linux and Windows are tested to work. MacOS support is unknown, the server should have no issues since the filesystem is identical to Linux. You might encounter bugs using the client on MacOS.
 
 ## Stack
 
