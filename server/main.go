@@ -167,6 +167,12 @@ func main() {
 	id := GenerateRandomString(4)
 	key := GenerateRandomString(8)
 
+	if len(os.Args) > 1 && os.Args[1] == "--DO_NOT_USE_THIS_OR_YOU_WILL_BE_HACKED__DEMO" {
+		log.Println(prefix + "WARNING: Demo mode enabled")
+		id = "DEMO"
+		key = "67676767"
+	}
+
 	fmt.Println(prefix+"Connect your instance: \x1b[30;47;1m", id+key, "\x1b[0m")
 
 	u := url.URL{Scheme: "wss", Host: host, Path: "/", RawQuery: "id=P-" + id}

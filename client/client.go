@@ -370,6 +370,11 @@ func readLoop(conn *websocket.Conn) {
 func loop() {
 	imgui.ClearSizeCallbackPool()
 
+	io := imgui.CurrentIO()
+    if io.ConfigFlags() & imgui.ConfigFlagsViewportsEnable != 0 {
+        io.SetConfigFlags(io.ConfigFlags() &^ imgui.ConfigFlagsViewportsEnable)
+    }
+
 	if !connected {
 		if imgui.BeginV("Connect", nil, imgui.WindowFlagsNoResize|imgui.WindowFlagsNoCollapse) {
 			if imgui.InputTextWithHint("##id", "Your code...", &id, imgui.InputTextFlagsEnterReturnsTrue, nil) {
