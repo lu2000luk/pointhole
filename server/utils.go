@@ -152,6 +152,9 @@ func MarshallAndSend(resp any, c *websocket.Conn, key string) {
 
 func FixPathIfWindows(path string) string {
 	if runtime.GOOS == "windows" {
+		if strings.HasPrefix(path, "C:\\") || strings.HasPrefix(path, "C:/") {
+			return strings.ReplaceAll(path, "/", "\\")
+		}
 		return "C:\\" + strings.ReplaceAll(path, "/", "\\")
 	}
 	return path
