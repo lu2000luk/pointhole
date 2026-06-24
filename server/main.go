@@ -19,6 +19,7 @@ const host = "67worker.lu2000luk.com"
 const prefix = "\x1b[35;1m[+]\x1b[0m\x1b[37m "
 
 var transfers = make(map[string]string) // [id]:[path]
+var demo = false
 
 type TransferChunkRange struct {
 	RangeStart int64 `json:"s"`
@@ -171,6 +172,7 @@ func main() {
 		log.Println(prefix + "WARNING: Demo mode enabled")
 		id = "DEMO"
 		key = "67676767"
+		demo = true
 	}
 
 	fmt.Println(prefix+"Connect your instance: \x1b[30;47;1m", id+key, "\x1b[0m")
@@ -262,6 +264,12 @@ func main() {
 					log.Printf(prefix + "Missing path for rm")
 				}
 
+				if demo {
+					if strings.Contains(com.Target, "demo_no_delete") {
+						log.Println(prefix + "[DEMO] Skipping deletion of " + com.Target)
+					}
+				}
+
 				log.Printf(prefix+"Received rm command for %s", FixPathIfWindows(com.Target))
 				err := os.RemoveAll(FixPathIfWindows(com.Target))
 				resp := GenericResponse{
@@ -278,6 +286,13 @@ func main() {
 				}
 
 				log.Printf(prefix+"Received mv command from %s to %s", FixPathIfWindows(com.Target), FixPathIfWindows(com.Destination))
+
+				if demo {
+					if strings.Contains(com.Target, "demo_no_delete") {
+						log.Println(prefix + "[DEMO] Skipping mv for " + com.Target)
+					}
+				}
+
 				err := os.Rename(FixPathIfWindows(com.Target), FixPathIfWindows(com.Destination))
 				resp := GenericResponse{
 					Success: err == nil,
@@ -344,6 +359,12 @@ func main() {
 				}
 
 				log.Printf(prefix+"Received copy command from %s to %s", FixPathIfWindows(com.Target), FixPathIfWindows(com.Destination))
+
+				if demo {
+					if strings.Contains(com.Target, "demo_no_delete") {
+						log.Println(prefix + "[DEMO] Skipping copy of " + com.Target)
+					}
+				}
 
 				err := copyFileOrDir(FixPathIfWindows(com.Target), FixPathIfWindows(com.Destination))
 				resp := GenericResponse{
