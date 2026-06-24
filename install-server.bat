@@ -12,11 +12,12 @@ mkdir pointhole
 cd pointhole
 
 echo Downloading pointhole/server...
-echo 
 curl.exe -o pointserver.exe https://cdn.lu2000luk.com/pointhole/server/server.exe
 echo Download complete
 echo Adding to path...
-setx PATH "%PATH%;%APPDATA%\pointhole"
+
+powershell -NoProfile -Command "if (([Environment]::GetEnvironmentVariable('Path', 'User') -split ';') -notcontains '%APPDATA%\pointhole') { [Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path', 'User') + ';' + '%APPDATA%\pointhole', 'User') }"
+
 echo Installation complete, you can now run the server with the command "pointserver" in the terminal.
 goto end
 
