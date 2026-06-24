@@ -371,9 +371,9 @@ func loop() {
 	imgui.ClearSizeCallbackPool()
 
 	io := imgui.CurrentIO()
-    if io.ConfigFlags() & imgui.ConfigFlagsViewportsEnable != 0 {
-        io.SetConfigFlags(io.ConfigFlags() &^ imgui.ConfigFlagsViewportsEnable)
-    }
+	if io.ConfigFlags()&imgui.ConfigFlagsViewportsEnable != 0 {
+		io.SetConfigFlags(io.ConfigFlags() &^ imgui.ConfigFlagsViewportsEnable &^ imgui.ConfigFlagsDockingEnable)
+	}
 
 	if !connected {
 		if imgui.BeginV("Connect", nil, imgui.WindowFlagsNoResize|imgui.WindowFlagsNoCollapse) {
@@ -388,6 +388,8 @@ func loop() {
 		imgui.End()
 	}
 
+	imgui.PushStyleColorVec4(imgui.ColWindowBg, imgui.NewVec4(0, 0, 0, 0))
+	imgui.PushStyleVarFloat(imgui.StyleVarWindowBorderSize, 0)
 	if imgui.BeginV("Title Bar", nil, imgui.WindowFlagsMenuBar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove) {
 		if imgui.BeginMenuBar() {
 			if imgui.BeginMenu("Pointhole") {
@@ -418,6 +420,8 @@ func loop() {
 		}
 	}
 	imgui.End()
+	imgui.PopStyleColorV(1)
+	imgui.PopStyleVarV(1)
 
 	if isRenaming {
 		if imgui.BeginV("Rename", nil, imgui.WindowFlagsNoResize|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoMove) {
@@ -781,9 +785,10 @@ func loop() {
 		imgui.SetWindowPosStr("Connect", imgui.Vec2{viewport.X / 2, viewport.Y / 2})
 
 		imgui.SetWindowSizeStr("Title Bar", imgui.Vec2{viewport.X, 0})
-		imgui.SetWindowPosStr("Title Bar", imgui.Vec2{0, 0})
 		setLayout = false
 	}
+
+	imgui.SetWindowPosStr("Title Bar", imgui.Vec2{0, 0})
 }
 
 func main() {
@@ -800,6 +805,7 @@ func main() {
 	currentBackend.SetWindowFlags(glfwbackend.GLFWWindowFlagsFloating, 0)
 	currentBackend.SetWindowFlags(glfwbackend.GLFWWindowFlagsMaximized, 0)
 
+	currentBackend.SetBgColor(imgui.NewVec4(0, 0, 0, 1))
 	currentBackend.CreateWindow("PointHole", 920, 560)
 
 	currentBackend.SetCloseCallback(func() {
