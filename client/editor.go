@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -27,6 +28,18 @@ func OpenInEditor(serverPath string, size int64, RRuploadTransfers *map[string]s
 
 	editor, editorArgs := getEditor()
 	tempFilePath := "temp_" + GenerateRandomString(5) + "_" + serverPath[strings.LastIndex(serverPath, "/")+1:]
+
+	tempFolder := "temp"
+
+	if runtime.GOOS == "windows" {
+		tempFolder = os.Getenv("TEMP") + "\\"
+	} else if runtime.GOOS == "darwin" {
+		tempFolder = "/tmp/"
+	} else if runtime.GOOS == "linux" {
+		tempFolder = "/tmp/"
+	}
+
+	tempFilePath = tempFolder + tempFilePath
 
 	err := DownloadFile(serverPath, tempFilePath, size, RRgetTransfers, RRrequestedChunks, RRrequestedChunksResponse)
 	if err != nil {
