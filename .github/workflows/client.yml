@@ -4,8 +4,8 @@ on:
   push:
     branches: ["master"]
     paths:
-      - 'client/**.go'
-      - '.github/workflows/client.yml'
+      - "client/**.go"
+      - ".github/workflows/client.yml"
 
 jobs:
   build-linux:
@@ -38,7 +38,7 @@ jobs:
         env:
           CGO_ENABLED: 1
         run: |
-          go build -v -o client .
+          go build -ldflags="-extldflags=-static -s -w" -v -o client .
       - name: Upload Linux binary
         uses: ryand56/r2-upload-action@latest
         with:
@@ -67,7 +67,7 @@ jobs:
         env:
           CGO_ENABLED: 1
         run: |
-          go build -v -o client.exe .
+          go build -ldflags="-extldflags=-static -s -w" -v -o client.exe .
       - name: Upload Windows binary
         uses: ryand56/r2-upload-action@latest
         with:
