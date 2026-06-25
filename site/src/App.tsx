@@ -202,7 +202,11 @@ function App() {
 				<Physics>
 					<pointLight distance={10} intensity={20} color="yellow" />
 
-					<Button text="Linux" pos={[0, 4, 0]} />
+					<Button text="Windows" pos={[-5, 4, 0]} />
+					<Button text="Linux" pos={[-2, 4, 0]} />
+					
+					<Button text="Windows" pos={[2, 4, 0]} />
+					<Button text="Linux" pos={[5, 4, 0]} />
 
 					<RigidBody type="dynamic" position={[0, 1, -8]} colliders="cuboid">
 						<mesh material={glassMaterial}>
