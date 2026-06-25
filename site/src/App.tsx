@@ -1,15 +1,12 @@
-import { useRef, useMemo, useState, useEffect } from "react";
+import { useRef, useMemo, useState } from "react";
 import "./App.css";
 import * as THREE from "three";
 import {
 	useTexture,
 	PerspectiveCamera,
-	CameraControls,
-	MeshWobbleMaterial,
 } from "@react-three/drei";
-import { Canvas, useFrame, extend } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { Physics, RapierRigidBody, RigidBody } from "@react-three/rapier";
-import { useGesture } from "@use-gesture/react";
 import { Letter, PButton } from "./models";
 import { Text } from "@react-three/drei";
 
@@ -179,12 +176,12 @@ function FLetter({ index }: any) {
 			ref={ref}
 		>
 			<Letter
-				onPointerOver={(e) => {
+				onPointerOver={() => {
 					if (ref.current) {
 						ref.current.applyImpulse({ x: 0, y: 0.8, z: 0 }, true);
 					}
 				}}
-				onPointerDown={(e) => {
+				onPointerDown={() => {
 					if (ref.current) {
 						ref.current.applyImpulse({ x: 0, y: 0, z: -0.5 }, true);
 					}
