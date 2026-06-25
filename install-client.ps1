@@ -14,7 +14,7 @@ Set-Location $installDir
 
 # Download
 Write-Host "Downloading pointhole/client..."
-Invoke-WebRequest -Uri "https://cdn.lu2000luk.com/pointhole/client/client.exe?commit=1d6e584" -OutFile $clientPath -UseBasicParsing # add last commit to the url to bust the cache
+Invoke-WebRequest -Uri "https://cdn.lu2000luk.com/pointhole/client/client.exe?commit=739e2fc" -OutFile $clientPath -UseBasicParsing # add last commit to the url to bust the cache
 Write-Host "Download complete" -ForegroundColor Green
 
 # Create shortcut

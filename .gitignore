@@ -1,2 +1,5 @@
 *.jsonl
 *.json
+!client/winres/winres.json
+!server/winres/winres.json
+*.syso

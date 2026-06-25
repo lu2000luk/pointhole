@@ -5,6 +5,7 @@ on:
     branches: ["master"]
     paths:
       - "server/**.go"
+      - "server/winres/**"
       - ".github/workflows/server.yml"
 
 jobs:
@@ -24,6 +25,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -40,6 +43,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-build-server-
 
+      - name: Install go-winres
+        run: go install github.com/tc-hib/go-winres@latest
+
       - name: Build server binary
         working-directory: ./server
         env:
@@ -47,6 +53,7 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
         run: |
+          go generate ./...
           go build -o ${{ matrix.binary }} .
 
       - name: Upload binary to R2

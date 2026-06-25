@@ -1,2 +1,6 @@
+install-winres:
+	go install github.com/tc-hib/go-winres@latest
+
 build:
+	go generate ./...
 	go build -ldflags="-extldflags=-static -s -w" .
