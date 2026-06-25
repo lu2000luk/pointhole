@@ -1,10 +1,7 @@
 import { useRef, useMemo, useState } from "react";
 import "./App.css";
 import * as THREE from "three";
-import {
-	useTexture,
-	PerspectiveCamera,
-} from "@react-three/drei";
+import { useTexture, PerspectiveCamera } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Physics, RapierRigidBody, RigidBody } from "@react-three/rapier";
 import { Letter, PButton } from "./models";
@@ -222,112 +219,264 @@ function download(s: boolean, os: boolean) {
 }
 
 function App() {
+	const [scriptsOpen, setScriptsOpen] = useState(false);
+
+	const scripts = {
+		client: {
+			windows: `powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/lu2000luk/pointhole/master/install-client.ps1 | iex"`,
+			linux: `curl -fsSL https://raw.githubusercontent.com/lu2000luk/pointhole/master/install-client.sh | bash`,
+		},
+		server: {
+			windows: `powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/lu2000luk/pointhole/master/install-server.ps1 | iex"`,
+			linux: `curl -fsSL https://raw.githubusercontent.com/lu2000luk/pointhole/master/install-server.sh | bash`,
+		},
+	};
+
+	const [serverSelected, setServerSelected] = useState(true);
+	const [copiedLinux, setCopiedLinux] = useState(false);
+	const [copiedWindows, setCopiedWindows] = useState(false);
+
 	return (
-		<div style={{ height: "100vh", width: "100vw" }}>
-			<Canvas>
-				<BackgroundImage />
+		<>
+			{scriptsOpen && (
+				<>
+					<div
+						style={{
+							height: "100vh",
+							width: "100vw",
+							position: "absolute",
+							top: 0,
+							left: 0,
+							backgroundColor: "rgba(0, 0, 0, 0.6)",
+							backdropFilter: "blur(10px)",
+							zIndex: 10,
+						}}
+					></div>
 
-				<Physics>
-					<pointLight distance={10} intensity={20} color="yellow" />
-
-					<Button
-						text="Windows"
-						pos={[-5, 4, 0]}
-						onClick={() => download(true, true)}
-					/>
-					<Button
-						text="Linux"
-						pos={[-2, 4, 0]}
-						onClick={() => download(true, false)}
-					/>
-
-					<Button
-						text="Windows"
-						pos={[2, 4, 0]}
-						onClick={() => download(false, true)}
-					/>
-					<Button
-						text="Linux"
-						pos={[5, 4, 0]}
-						onClick={() => download(false, false)}
-					/>
-
-					<RigidBody type="dynamic" position={[0, 1, -8]} colliders="cuboid">
-						<mesh material={glassMaterial}>
-							<boxGeometry args={[16, 0.5, 3]} />
-						</mesh>
-					</RigidBody>
-
-					<RigidBody
-						type="dynamic"
-						position={[3.5, 1, -2.5]}
-						colliders="cuboid"
+					<div
+						className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[11] w-[80%] max-w-[600px] rounded-[20px] p-6 shadow-2xl"
+						style={{ backgroundColor: "#2a2a2a" }}
 					>
-						<group>
+						<div className="flex items-center justify-between mb-5">
+							<p className="text-lg font-medium text-white">Install scripts</p>
+
+							<div className="flex items-center gap-2">
+								<div className="flex gap-2 bg-[#3a3a3a] rounded-full p-1 cursor-pointer">
+									<button
+										className={`rounded-full px-[18px] py-[6px] text-sm font-medium cursor-pointer ${
+											serverSelected
+												? "bg-[#4a4a4a] text-[#e0e0e0]"
+												: "bg-transparent text-[#a0a0a0]"
+										}`}
+										onClick={() => setServerSelected(true)}
+									>
+										Server
+									</button>
+									<button
+										className={`rounded-full px-[18px] py-[6px] text-sm font-medium cursor-pointer ${
+											!serverSelected
+												? "bg-[#4a4a4a] text-[#e0e0e0]"
+												: "bg-transparent text-[#a0a0a0]"
+										}`}
+										onClick={() => setServerSelected(false)}
+									>
+										Client
+									</button>
+								</div>
+
+								<div>
+									<button
+										className="bg-black/15 text-[#c0c0c0] cursor-pointer rounded-full px-1.5 py-1.5 text-sm font-medium hover:opacity-80 transition-opacity"
+										onClick={() => setScriptsOpen(false)}
+									>
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											width="20"
+											height="20"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+										>
+											<path d="M18 6 6 18" />
+											<path d="m6 6 12 12" />
+										</svg>
+									</button>
+								</div>
+							</div>
+						</div>
+
+						{/* Linux */}
+						<div className="mb-3">
+							<p className="text-sm text-[#b0b0b0] mb-1.5 ml-1">For linux</p>
+							<div className="flex items-center gap-2">
+								<div className="flex-1 bg-[#1a1a1a] rounded-full px-3.5 py-2.5 flex items-center overflow-x-auto">
+									<code className="font-mono text-sm text-green-400 whitespace-nowrap">
+										{serverSelected
+											? scripts.server.linux
+											: scripts.client.linux}
+									</code>
+								</div>
+								<button
+									className="bg-[#3a3a3a] text-[#c0c0c0] rounded-full px-4 py-2 text-sm font-medium cursor-pointer hover:opacity-85 transition-opacity"
+									onClick={() => {
+										const script = serverSelected
+											? scripts.server.linux
+											: scripts.client.linux;
+										navigator.clipboard.writeText(script);
+										setCopiedLinux(true);
+										setTimeout(() => setCopiedLinux(false), 2000);
+									}}
+								>
+									{copiedLinux ? "Copied!" : "Copy"}
+								</button>
+							</div>
+						</div>
+
+						{/* Windows */}
+						<div>
+							<p className="text-sm text-[#b0b0b0] mb-1.5 ml-1">For windows</p>
+							<div className="flex items-center gap-2">
+								<div className="flex-1 bg-[#1a1a1a] rounded-full px-3.5 py-2.5 flex items-center overflow-x-auto">
+									<code className="font-mono text-sm text-blue-400 whitespace-nowrap">
+										{serverSelected
+											? scripts.server.windows
+											: scripts.client.windows}
+									</code>
+								</div>
+								<button
+									className="bg-[#3a3a3a] text-[#c0c0c0] rounded-full px-4 py-2 text-sm font-medium cursor-pointer hover:opacity-85 transition-opacity"
+									onClick={() => {
+										const script = serverSelected
+											? scripts.server.windows
+											: scripts.client.windows;
+										navigator.clipboard.writeText(script);
+										setCopiedWindows(true);
+										setTimeout(() => setCopiedWindows(false), 2000);
+									}}
+								>
+									{copiedWindows ? "Copied!" : "Copy"}
+								</button>
+							</div>
+						</div>
+					</div>
+				</>
+			)}
+
+			<div style={{ height: "100vh", width: "100vw" }}>
+				<Canvas>
+					<BackgroundImage />
+
+					<Physics>
+						<pointLight distance={10} intensity={20} color="yellow" />
+
+						<Button
+							text="Windows"
+							pos={[-5, 4, 0]}
+							onClick={() => download(true, true)}
+						/>
+						<Button
+							text="Linux"
+							pos={[-2, 4, 0]}
+							onClick={() => download(true, false)}
+						/>
+
+						<Button
+							text="Windows"
+							pos={[2, 4, 0]}
+							onClick={() => download(false, true)}
+						/>
+						<Button
+							text="Linux"
+							pos={[5, 4, 0]}
+							onClick={() => download(false, false)}
+						/>
+
+						<RigidBody type="dynamic" position={[0, 1, -8]} colliders="cuboid">
 							<mesh material={glassMaterial}>
-								<boxGeometry args={[2, 0.25, 0.8]} />
+								<boxGeometry args={[16, 0.5, 3]} />
 							</mesh>
+						</RigidBody>
 
-							<Text
-								fontSize={0.4}
-								rotation={[-1.6, 0, 0]}
-								position={[0, 0.2, 0]}
-								font="/bitcount.ttf"
-							>
-								Client
-							</Text>
-						</group>
-					</RigidBody>
+						<RigidBody
+							type="dynamic"
+							position={[3.5, 1, -2.5]}
+							colliders="cuboid"
+						>
+							<group>
+								<mesh material={glassMaterial}>
+									<boxGeometry args={[2, 0.25, 0.8]} />
+								</mesh>
 
-					<RigidBody
-						type="dynamic"
-						position={[-3.5, 1, -2.5]}
-						colliders="cuboid"
-					>
-						<group>
-							<mesh material={glassMaterial}>
-								<boxGeometry args={[2, 0.25, 0.8]} />
+								<Text
+									fontSize={0.4}
+									rotation={[-1.6, 0, 0]}
+									position={[0, 0.2, 0]}
+									font="/bitcount.ttf"
+								>
+									Client
+								</Text>
+							</group>
+						</RigidBody>
+
+						<RigidBody
+							type="dynamic"
+							position={[-3.5, 1, -2.5]}
+							colliders="cuboid"
+						>
+							<group>
+								<mesh material={glassMaterial}>
+									<boxGeometry args={[2, 0.25, 0.8]} />
+								</mesh>
+
+								<Text
+									fontSize={0.4}
+									rotation={[-1.6, 0, 0]}
+									position={[0, 0.2, 0]}
+									font="/bitcount.ttf"
+								>
+									Server
+								</Text>
+							</group>
+						</RigidBody>
+
+						<FLetter index={0} />
+						<FLetter index={1} />
+						<FLetter index={2} />
+						<FLetter index={3} />
+						<FLetter index={4} />
+						<FLetter index={5} />
+						<FLetter index={6} />
+						<FLetter index={7} />
+						<FLetter index={8} />
+
+						<Button
+							text="Scripts"
+							pos={[0, 4, 2]}
+							onClick={() => setScriptsOpen(!scriptsOpen)}
+						/>
+
+						<RigidBody type="fixed">
+							<mesh position={[0, -2, 0]} rotation={[0, 0, 0]}>
+								<cylinderGeometry args={[100, 100, 1, 32]} />
+								<GradientFloorMaterial />
 							</mesh>
+						</RigidBody>
+					</Physics>
 
-							<Text
-								fontSize={0.4}
-								rotation={[-1.6, 0, 0]}
-								position={[0, 0.2, 0]}
-								font="/bitcount.ttf"
-							>
-								Server
-							</Text>
-						</group>
-					</RigidBody>
+					<PerspectiveCamera
+						makeDefault
+						position={[0, 16, 5]}
+						rotation={[-1, 0, 0]}
+					/>
 
-					<FLetter index={0} />
-					<FLetter index={1} />
-					<FLetter index={2} />
-					<FLetter index={3} />
-					<FLetter index={4} />
-					<FLetter index={5} />
-					<FLetter index={6} />
-					<FLetter index={7} />
-					<FLetter index={8} />
-
-					<RigidBody type="fixed">
-						<mesh position={[0, -2, 0]} rotation={[0, 0, 0]}>
-							<cylinderGeometry args={[100, 100, 1, 32]} />
-							<GradientFloorMaterial />
-						</mesh>
-					</RigidBody>
-				</Physics>
-
-				<PerspectiveCamera
-					makeDefault
-					position={[0, 16, 5]}
-					rotation={[-1, 0, 0]}
-				/>
-
-				<ambientLight intensity={0.5} />
-				<directionalLight position={[5, 5, 5]} intensity={1} />
-			</Canvas>
-		</div>
+					<ambientLight intensity={0.5} />
+					<directionalLight position={[5, 5, 5]} intensity={1} />
+				</Canvas>
+			</div>
+		</>
 	);
 }
 

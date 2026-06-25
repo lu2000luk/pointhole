@@ -15,7 +15,7 @@ Set-Location $installDir
 
 # Download
 Write-Host "Downloading pointhole/server..."
-Invoke-WebRequest -Uri "https://cdn.lu2000luk.com/pointhole/server/server.exe?commit=dbabf17" -OutFile $serverPath -UseBasicParsing # add last commit to the url to bust the cache
+Invoke-WebRequest -Uri "https://cdn.lu2000luk.com/pointhole/server/server.exe?commit=3ed1b65" -OutFile $serverPath -UseBasicParsing # add last commit to the url to bust the cache
 Write-Host "Download complete" -ForegroundColor Green
 
 # Add to PATH
