@@ -12,12 +12,20 @@ createRoot(document.getElementById('root')!).render(
 
 useGLTF.preload('/button/button.glb')
 
-useGLTF.preload('/letters/0.glb') // e
-useGLTF.preload('/letters/1.glb') // l
-useGLTF.preload('/letters/2.glb') // o
-useGLTF.preload('/letters/3.glb') // h
-useGLTF.preload('/letters/4.glb') // t
-useGLTF.preload('/letters/5.glb') // n
-useGLTF.preload('/letters/6.glb') // i
-useGLTF.preload('/letters/7.glb') // o
-useGLTF.preload('/letters/8.glb') // P
+useGLTF.preload('/letters/p.glb')
+
+useGLTF.preload('/letters/o.glb')
+
+useGLTF.preload('/letters/i.glb')
+
+useGLTF.preload('/letters/n.glb')
+
+useGLTF.preload('/letters/t.glb')
+
+useGLTF.preload('/letters/h.glb')
+
+// useGLTF.preload('/letters/o.glb')
+
+useGLTF.preload('/letters/l.glb')
+
+useGLTF.preload('/letters/e.glb')
