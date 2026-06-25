@@ -4,8 +4,8 @@ on:
   push:
     branches: ["master"]
     paths:
-      - 'server/**.go'
-      - '.github/workflows/server.yml'
+      - "server/**.go"
+      - ".github/workflows/server.yml"
 
 jobs:
   build:
@@ -28,9 +28,9 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: 'server/go.mod'
+          go-version-file: "server/go.mod"
           cache: true
-          cache-dependency-path: 'server/go.sum'
+          cache-dependency-path: "server/go.sum"
 
       - name: Cache Go build cache
         uses: actions/cache@v4

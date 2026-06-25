@@ -38,7 +38,7 @@ jobs:
         env:
           CGO_ENABLED: 1
         run: |
-          go build -ldflags="-extldflags=-static -s -w" -v -o client .
+          go build -ldflags="-s -w" -v -o client .
       - name: Upload Linux binary
         uses: ryand56/r2-upload-action@latest
         with:
