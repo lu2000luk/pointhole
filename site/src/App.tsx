@@ -131,11 +131,16 @@ function Button({ text, pos, onClick }: any) {
 							setIsPressed(false);
 							ref.current?.setBodyType(0, true); // dynamic
 						}}
+						onPointerLeave={() => {
+							setIsPressed(false);
+							ref.current?.setBodyType(0, true); // dynamic
+						}}
 					/>
 					<Text
 						fontSize={0.5}
 						position={[0.8, 0, 0]}
 						rotation={[-1.5, 1, -1.62]}
+						font="/space.ttf"
 					>
 						{text}
 					</Text>
@@ -193,6 +198,32 @@ function FLetter({ index }: any) {
 	);
 }
 
+function download(s: boolean, os: boolean) {
+	const urls = {
+		server: {
+			linux: "https://cdn.lu2000luk.com/pointhole/server/server",
+			windows: "https://cdn.lu2000luk.com/pointhole/server/server.exe",
+		},
+		client: {
+			linux: "https://cdn.lu2000luk.com/pointhole/client/client",
+			windows: "https://cdn.lu2000luk.com/pointhole/client/client.exe",
+		},
+	};
+	if (s) {
+		if (os) {
+			window.open(urls.server.windows + "?date=" + Date.now(), "_blank");
+		} else {
+			window.open(urls.server.linux + "?date=" + Date.now(), "_blank");
+		}
+	} else {
+		if (os) {
+			window.open(urls.client.windows + "?date=" + Date.now(), "_blank");
+		} else {
+			window.open(urls.client.linux + "?date=" + Date.now(), "_blank");
+		}
+	}
+}
+
 function App() {
 	return (
 		<div style={{ height: "100vh", width: "100vw" }}>
@@ -202,16 +233,74 @@ function App() {
 				<Physics>
 					<pointLight distance={10} intensity={20} color="yellow" />
 
-					<Button text="Windows" pos={[-5, 4, 0]} />
-					<Button text="Linux" pos={[-2, 4, 0]} />
-					
-					<Button text="Windows" pos={[2, 4, 0]} />
-					<Button text="Linux" pos={[5, 4, 0]} />
+					<Button
+						text="Windows"
+						pos={[-5, 4, 0]}
+						onClick={() => download(true, true)}
+					/>
+					<Button
+						text="Linux"
+						pos={[-2, 4, 0]}
+						onClick={() => download(true, false)}
+					/>
+
+					<Button
+						text="Windows"
+						pos={[2, 4, 0]}
+						onClick={() => download(false, true)}
+					/>
+					<Button
+						text="Linux"
+						pos={[5, 4, 0]}
+						onClick={() => download(false, false)}
+					/>
 
 					<RigidBody type="dynamic" position={[0, 1, -8]} colliders="cuboid">
 						<mesh material={glassMaterial}>
 							<boxGeometry args={[16, 0.5, 3]} />
 						</mesh>
+					</RigidBody>
+
+					<RigidBody
+						type="dynamic"
+						position={[3.5, 1, -2.5]}
+						colliders="cuboid"
+					>
+						<group>
+							<mesh material={glassMaterial}>
+								<boxGeometry args={[2, 0.25, 0.8]} />
+							</mesh>
+
+							<Text
+								fontSize={0.4}
+								rotation={[-1.6, 0, 0]}
+								position={[0, 0.2, 0]}
+								font="/bitcount.ttf"
+							>
+								Client
+							</Text>
+						</group>
+					</RigidBody>
+
+					<RigidBody
+						type="dynamic"
+						position={[-3.5, 1, -2.5]}
+						colliders="cuboid"
+					>
+						<group>
+							<mesh material={glassMaterial}>
+								<boxGeometry args={[2, 0.25, 0.8]} />
+							</mesh>
+
+							<Text
+								fontSize={0.4}
+								rotation={[-1.6, 0, 0]}
+								position={[0, 0.2, 0]}
+								font="/bitcount.ttf"
+							>
+								Server
+							</Text>
+						</group>
 					</RigidBody>
 
 					<FLetter index={0} />
@@ -234,8 +323,8 @@ function App() {
 
 				<PerspectiveCamera
 					makeDefault
-					position={[0, 16, 10]}
-					rotation={[-0.8, 0, 0]}
+					position={[0, 16, 5]}
+					rotation={[-1, 0, 0]}
 				/>
 
 				<ambientLight intensity={0.5} />
