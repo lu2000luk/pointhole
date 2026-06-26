@@ -448,6 +448,18 @@ func loop() {
 
 				imgui.EndMenu()
 			}
+
+			if !connected && strings.Contains(host, "lu2000luk.com") {
+				if imgui.BeginMenu("Demo") {
+					if imgui.MenuItemBool("Connect to demo server") {
+						id = "DEMO67676767"
+						go connect(id)
+					}
+
+					imgui.EndMenu()
+				}
+			}
+
 			imgui.EndMenuBar()
 		}
 	}
