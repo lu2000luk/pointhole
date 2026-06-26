@@ -402,10 +402,14 @@ func loop() {
 	if !connected {
 		if imgui.BeginV("Connect", nil, imgui.WindowFlagsNoResize|imgui.WindowFlagsNoCollapse) {
 			if imgui.InputTextWithHint("##id", "Your code...", &id, imgui.InputTextFlagsEnterReturnsTrue, nil) {
+				id = strings.TrimSpace(id)
+				id = strings.ToUpper(id)
 				go connect(id)
 			}
 
 			if imgui.Button("Connect") {
+				id = strings.TrimSpace(id)
+				id = strings.ToUpper(id)
 				go connect(id)
 			}
 		}
@@ -998,6 +1002,12 @@ func init() { // this runs before main??? go magic...
 func main() {
 	log.SetFlags(0)
 	signal.Notify(interrupt, os.Interrupt)
+
+	if len(os.Args) > 2 && os.Args[1] == "--server" {
+		host = os.Args[2]
+	} else if len(os.Args) > 1 && os.Args[1] == "--demo" {
+		id = "DEMO67676767"
+	}
 
 	niceGLFWBackend := glfwbackend.NewGLFWBackend()
 	currentBackend, _ = backend.CreateBackend(niceGLFWBackend)

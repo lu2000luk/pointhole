@@ -14,7 +14,7 @@ cd $HOME/.local/bin/
 echo "Downloading client..."
 
 # add last commit to the url to bust the cache
-curl -o pointclient https://cdn.lu2000luk.com/pointhole/client/client?commit=f8ce9db
+curl -o pointclient https://cdn.lu2000luk.com/pointhole/client/client?commit=ec3692b
 chmod +x pointclient
 
 echo "Client installed to $HOME/.local/bin/pointclient"

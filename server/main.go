@@ -16,7 +16,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const host = "67worker.lu2000luk.com"
+var host = "67worker.lu2000luk.com"
+
 const prefix = "\x1b[35;1m[+]\x1b[0m\x1b[37m "
 
 var transfers = make(map[string]string) // [id]:[path]
@@ -174,6 +175,10 @@ func main() {
 		id = "DEMO"
 		key = "67676767"
 		demo = true
+	}
+
+	if len(os.Args) > 2 && os.Args[1] == "--server" {
+		host = os.Args[2]
 	}
 
 	fmt.Println(prefix+"Connect your instance: \x1b[30;47;1m", id+key, "\x1b[0m")
