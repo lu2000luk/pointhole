@@ -10,7 +10,9 @@ require (
 
 require (
 	github.com/TheTitanrain/w32 v0.0.0-20180517000239-4f5cfb03fabf // indirect
+	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
+	github.com/gliderlabs/ssh v0.3.8 // indirect
 	github.com/sqweek/dialog v0.0.0-20260123140253-64c163d53aac // indirect
 	golang.org/x/sys v0.46.0 // indirect
 )

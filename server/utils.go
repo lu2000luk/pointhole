@@ -127,7 +127,7 @@ func GenerateRandomString(length int) string {
 	return sb.String()
 }
 
-func MarshallAndSend(resp any, c *websocket.Conn, key string) {
+func MarshallAndSend(resp any, c *SafeWebSocket, key string) {
 	jsonresp, err := json.Marshal(resp)
 
 	if err != nil {

@@ -47,11 +47,17 @@ type TransferChunk struct {
 }
 
 type Command struct {
-	Target        string             `json:"t"` // path (transferId for getChunk)
-	Destination   string             `json:"d"` // path only for mv and copy
+	Target        string             `json:"t"` // path (transferId for getChunk) (data for stdin)
+	Destination   string             `json:"d"` // path only for mv and copy (special command for stdin)
 	GetChunkRange TransferChunkRange `json:"r"` // only for getChunk
 	UploadData    TransferChunk      `json:"u"` // only for uploadChunk
-	Command       string             `json:"c"` // ls,mv,rm,get,ping,mkdir,copy,upload,uploadChunk,getChunk
+	Command       string             `json:"c"` // ls,mv,rm,get,ping,mkdir,copy,upload,uploadChunk,getChunk,stdin
+}
+
+type Stdout struct {
+	Type    string `json:"type"`
+	Content []byte `json:"c"`
+	Error   bool   `json:"e"`
 }
 
 type LSResponseEntry struct {
@@ -374,6 +380,14 @@ func readLoop(conn *websocket.Conn) {
 			_ = json.Unmarshal(decrypted, &uploadChunkTemplate)
 			log.Printf("Upload chunk response: %+v\n", uploadChunkTemplate)
 
+		case "stdout":
+			stdoutTemplate := Stdout{}
+			_ = json.Unmarshal(decrypted, &stdoutTemplate)
+
+			if _, err := sshOut.Write(stdoutTemplate.Content); err != nil {
+				log.Printf("Dropping SSH stdout: %v", err)
+			}
+
 		default:
 			log.Println("Unknown type:", genericTemplate.Type)
 		}
@@ -658,6 +672,10 @@ func loop() {
 				RenderIconButton("##info_lefticon", DrawIconChevronLeft, 32, 30)
 				imgui.SameLine()
 				RenderIconButton("##info_createfoldericon", DrawIconFolderPlus, 32, 30)
+
+				if imgui.Button("Serve SSH") {
+					go ServeSSH(id)
+				}
 			}
 			imgui.End()
 		}

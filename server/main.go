@@ -4,6 +4,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -22,6 +24,19 @@ const prefix = "\x1b[35;1m[+]\x1b[0m\x1b[37m "
 
 var transfers = make(map[string]string) // [id]:[path]
 var demo = false
+
+type SafeWebSocket struct {
+	conn *websocket.Conn
+	mu   sync.Mutex
+}
+
+func (s *SafeWebSocket) WriteMessage(messageType int, data []byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.conn.WriteMessage(messageType, data)
+}
+
+var safeConn *SafeWebSocket
 
 type TransferChunkRange struct {
 	RangeStart int64 `json:"s"`
@@ -37,11 +52,17 @@ type TransferChunk struct {
 }
 
 type Command struct {
-	Target        string             `json:"t"` // path (transferId for getChunk)
-	Destination   string             `json:"d"` // path only for mv and copy
+	Target        string             `json:"t"` // path (transferId for getChunk) (data for stdin)
+	Destination   string             `json:"d"` // path only for mv and copy (special command for stdin)
 	GetChunkRange TransferChunkRange `json:"r"` // only for getChunk
 	UploadData    TransferChunk      `json:"u"` // only for uploadChunk
-	Command       string             `json:"c"` // ls,mv,rm,get,ping,mkdir,copy,upload,uploadChunk,getChunk
+	Command       string             `json:"c"` // ls,mv,rm,get,ping,mkdir,copy,upload,uploadChunk,getChunk,stdin
+}
+
+type Stdout struct {
+	Type    string `json:"type"`
+	Content []byte `json:"c"`
+	Error   bool   `json:"e"`
 }
 
 type LSResponseEntry struct {
@@ -90,8 +111,15 @@ type GenericResponse struct {
 	Type    string `json:"type"`
 }
 
+func writeStdinCommand(w io.Writer, input string) error {
+	input = strings.ReplaceAll(input, "\r", "\n")
+	_, err := w.Write([]byte(input))
+	return err
+}
+
 func connect(u url.URL) (*websocket.Conn, error) {
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	safeConn = &SafeWebSocket{conn: c}
 	return c, err
 }
 
@@ -251,8 +279,38 @@ func main() {
 					Type:    "ping",
 				}
 
-				MarshallAndSend(resp, c, key)
+				MarshallAndSend(resp, safeConn, key)
 				continue
+			}
+
+			if com.Command == "stdin" {
+				if com.Destination == "start" {
+					HandlePipe(safeConn, key)
+					continue
+				}
+				if !started {
+					log.Printf(prefix + "Shell not started yet, ignoring stdin command")
+					continue
+				}
+
+				if com.Target == "" {
+					log.Printf(prefix + "Missing data for stdin")
+					continue
+				}
+
+				if com.Target == "\x03" {
+					log.Printf(prefix + "Received interrupt command")
+					if err := InterruptShell(); err != nil {
+						log.Printf(prefix+"Error interrupting shell: %v", err)
+					}
+					continue
+				}
+
+				log.Printf(prefix+"Received stdin command: %s", com.Target)
+
+				if err := writeStdinCommand(inpipe, com.Target); err != nil {
+					log.Printf(prefix+"Error writing to stdin: %v", err)
+				}
 			}
 
 			if com.Command == "ls" {
@@ -262,7 +320,7 @@ func main() {
 				log.Printf(prefix+"Received ls command for %s", FixPathIfWindows(com.Target))
 				resp := ListDirectory(FixPathIfWindows(com.Target))
 
-				MarshallAndSend(resp, c, key)
+				MarshallAndSend(resp, safeConn, key)
 			}
 
 			if com.Command == "rm" {
@@ -283,7 +341,7 @@ func main() {
 					Type:    "rm",
 				}
 
-				MarshallAndSend(resp, c, key)
+				MarshallAndSend(resp, safeConn, key)
 			}
 
 			if com.Command == "mv" {
@@ -305,7 +363,7 @@ func main() {
 					Type:    "mv",
 				}
 
-				MarshallAndSend(resp, c, key)
+				MarshallAndSend(resp, safeConn, key)
 			}
 
 			if com.Command == "mkdir" {
@@ -321,7 +379,7 @@ func main() {
 					Type:    "mkdir",
 				}
 
-				MarshallAndSend(resp, c, key)
+				MarshallAndSend(resp, safeConn, key)
 			}
 
 			if com.Command == "get" {
@@ -352,7 +410,7 @@ func main() {
 					Type:       "get",
 				}
 
-				MarshallAndSend(resp, c, key)
+				MarshallAndSend(resp, safeConn, key)
 			}
 
 			if com.Command == "copy" {
@@ -377,7 +435,7 @@ func main() {
 					Success: err == nil,
 					Type:    "copy",
 				}
-				MarshallAndSend(resp, c, key)
+				MarshallAndSend(resp, safeConn, key)
 			}
 
 			if com.Command == "upload" {
@@ -406,7 +464,7 @@ func main() {
 					Path:       com.Target,
 					Type:       "upload",
 				}
-				MarshallAndSend(resp, c, key)
+				MarshallAndSend(resp, safeConn, key)
 			}
 
 			if com.Command == "uploadChunk" {
@@ -438,7 +496,7 @@ func main() {
 					},
 				}
 
-				MarshallAndSend(resp, c, key)
+				MarshallAndSend(resp, safeConn, key)
 			}
 
 			if com.Command == "getChunk" {
@@ -483,7 +541,7 @@ func main() {
 					IsEnd:   isEnd,
 				}
 
-				MarshallAndSend(chunkResp, c, key)
+				MarshallAndSend(chunkResp, safeConn, key)
 			}
 
 		}
