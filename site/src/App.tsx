@@ -258,7 +258,7 @@ function App() {
 					></div>
 
 					<div
-						className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[11] w-[80%] max-w-[600px] rounded-[20px] p-6 shadow-2xl"
+						className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-11 w-[80%] max-w-150 rounded-[20px] p-6 shadow-2xl"
 						style={{ backgroundColor: "#2a2a2a" }}
 					>
 						<div className="flex items-center justify-between mb-5">
@@ -267,7 +267,7 @@ function App() {
 							<div className="flex items-center gap-2">
 								<div className="flex gap-2 bg-[#3a3a3a] rounded-full p-1 cursor-pointer">
 									<button
-										className={`rounded-full px-[18px] py-[6px] text-sm font-medium cursor-pointer ${
+										className={`rounded-full px-4.5 py-1.5 text-sm font-medium cursor-pointer ${
 											serverSelected
 												? "bg-[#4a4a4a] text-[#e0e0e0]"
 												: "bg-transparent text-[#a0a0a0]"
@@ -277,7 +277,7 @@ function App() {
 										Server
 									</button>
 									<button
-										className={`rounded-full px-[18px] py-[6px] text-sm font-medium cursor-pointer ${
+										className={`rounded-full px-4.5 py-1.5 text-sm font-medium cursor-pointer ${
 											!serverSelected
 												? "bg-[#4a4a4a] text-[#e0e0e0]"
 												: "bg-transparent text-[#a0a0a0]"

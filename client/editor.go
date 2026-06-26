@@ -31,11 +31,12 @@ func OpenInEditor(serverPath string, size int64, RRuploadTransfers *map[string]s
 
 	tempFolder := "temp"
 
-	if runtime.GOOS == "windows" {
+	switch runtime.GOOS {
+	case "windows":
 		tempFolder = os.Getenv("TEMP") + "\\"
-	} else if runtime.GOOS == "darwin" {
+	case "darwin":
 		tempFolder = "/tmp/"
-	} else if runtime.GOOS == "linux" {
+	case "linux":
 		tempFolder = "/tmp/"
 	}
 
