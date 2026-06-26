@@ -4,6 +4,7 @@ import (
 	"io"
 	"math/rand/v2"
 	"os"
+	"os/exec"
 	"runtime"
 	"strconv"
 	"strings"
@@ -86,4 +87,20 @@ func FixPathIfWindows(path string) string {
 		return strings.ReplaceAll(path, "/", "\\")
 	}
 	return path
+}
+
+func OpenURL(url string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("cmd.exe", "/c", "start", url)
+	case "darwin":
+		cmd = exec.Command("open", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	return nil
 }

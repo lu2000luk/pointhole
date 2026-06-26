@@ -3,12 +3,14 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"os/signal"
 	"runtime"
 	"sort"
@@ -21,6 +23,7 @@ import (
 	"github.com/AllenDang/cimgui-go/backend/glfwbackend"
 	"github.com/AllenDang/cimgui-go/imgui"
 	_ "github.com/AllenDang/cimgui-go/impl/glfw"
+	"github.com/atotto/clipboard"
 	"github.com/gorilla/websocket"
 	"github.com/sqweek/dialog"
 )
@@ -155,6 +158,9 @@ var renamingNewName string = ""
 var isCreatingDir bool = false
 var creatingDirPath string = ""
 var creatingDirName string = ""
+
+var showPasteSuccess bool = false
+var pastebinKey string = ""
 
 // packet debugger window
 var commandName = ""
@@ -388,9 +394,9 @@ func openFolder(entry LSResponseEntry) {
 func loop() {
 	imgui.ClearSizeCallbackPool()
 
-	io := imgui.CurrentIO()
-	if io.ConfigFlags()&imgui.ConfigFlagsViewportsEnable != 0 {
-		io.SetConfigFlags(io.ConfigFlags() &^ imgui.ConfigFlagsViewportsEnable &^ imgui.ConfigFlagsDockingEnable)
+	cio := imgui.CurrentIO()
+	if cio.ConfigFlags()&imgui.ConfigFlagsViewportsEnable != 0 {
+		cio.SetConfigFlags(cio.ConfigFlags() &^ imgui.ConfigFlagsViewportsEnable &^ imgui.ConfigFlagsDockingEnable)
 	}
 
 	if !connected {
@@ -468,18 +474,7 @@ func loop() {
 			imgui.Text("Made with love by @lu2000luk")
 			imgui.Spacing()
 			if imgui.Button("Source code") {
-				var cmd *exec.Cmd
-				switch runtime.GOOS {
-				case "windows":
-					cmd = exec.Command("cmd.exe", "/c", "start", "https://git.lu2000luk.com/lu2000luk/pointhole")
-				case "darwin":
-					cmd = exec.Command("open", "https://git.lu2000luk.com/lu2000luk/pointhole")
-				default:
-					cmd = exec.Command("xdg-open", "https://git.lu2000luk.com/lu2000luk/pointhole")
-				}
-				if err := cmd.Start(); err != nil {
-					log.Printf("Failed to open URL: %v", err)
-				}
+				OpenURL("https://git.lu2000luk.com/lu2000luk/pointhole")
 			}
 		}
 		imgui.End()
@@ -532,6 +527,25 @@ func loop() {
 				}
 			}
 			imgui.End()
+		}
+
+		if showPasteSuccess {
+			if imgui.BeginV("Paste Success", &showPasteSuccess, imgui.WindowFlagsNone) {
+				imgui.Text("File uploaded to Pastebin!")
+				imgui.Text(fmt.Sprintf("URL: https://paste.rs/%s", pastebinKey))
+				if imgui.Button("Copy") {
+					clipboard.WriteAll(fmt.Sprintf("https://paste.rs/%s", pastebinKey))
+				}
+				imgui.SameLine()
+				if imgui.Button("Open") {
+					OpenURL(fmt.Sprintf("https://paste.rs/%s", pastebinKey))
+				}
+				imgui.SameLine()
+				if imgui.Button("Close") {
+					showPasteSuccess = false
+				}
+				imgui.End()
+			}
 		}
 
 		if showRandomReadWindow {
@@ -814,6 +828,45 @@ func loop() {
 									log.Printf("Error downloading file: %v\n", err)
 								}
 							}()
+						}
+
+						if imgui.MenuItemBool("Upload to Pastebin") {
+							if entry.Size > 8*1024*1024 { // 8MB
+								dialog.Message("No.").Title("File too large").Info()
+								log.Printf("Selected file is too large (%s), max allowed size for pastebin upload is 8 MB", BytesToReadable(int(entry.Size)))
+							} else {
+								data, err := RandomRead(strings.ReplaceAll(browserPath, "\\", "/")+"/"+entry.Name, 0, entry.Size, &get_transfers, &requested_random_chunk, &requested_random_chunk_response)
+								if err != nil {
+									log.Printf("Error reading file: %v\n", err)
+								}
+
+								go func() {
+									defer func() {
+										if r := recover(); r != nil {
+											log.Printf("Panic recovered in Pastebin upload: %v", r)
+										}
+									}()
+
+									resp, err := http.Post("https://paste.rs/", "text/plain", bytes.NewReader(data))
+									if err != nil {
+										log.Printf("Error uploading to Pastebin: %v\n", err)
+										return
+									}
+									defer resp.Body.Close()
+
+									bodyBytes, err := io.ReadAll(resp.Body)
+									if err != nil {
+										log.Printf("Error reading response body: %v\n", err)
+										return
+									}
+
+									bodyString := string(bodyBytes)
+									log.Printf("Uploaded to Pastebin: %s\n", bodyString)
+									pastebinKey = strings.TrimPrefix(bodyString, "https://paste.rs/")
+
+									showPasteSuccess = true
+								}()
+							}
 						}
 					}
 
