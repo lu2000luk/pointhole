@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"os/signal"
 	"runtime"
 	"sort"
@@ -122,6 +123,8 @@ var showUI bool = true
 
 var copiedPath string = ""
 var isCut bool = false
+
+var showConnectSSH bool = false
 
 var emulatedFS = make(map[string][]LSResponseEntry)
 var get_transfers = make(map[string]string)    // [id]:[path]
@@ -463,6 +466,16 @@ func loop() {
 				imgui.EndMenu()
 			}
 
+			if connected && imgui.BeginMenu("SSH") {
+				if imgui.MenuItemBool("Serve SSH") {
+					go ServeSSH(id)
+
+					showConnectSSH = true
+				}
+
+				imgui.EndMenu()
+			}
+
 			if !connected && strings.Contains(host, "lu2000luk.com") {
 				if imgui.BeginMenu("Demo") {
 					if imgui.MenuItemBool("Connect to demo server") {
@@ -480,6 +493,21 @@ func loop() {
 	imgui.End()
 	imgui.PopStyleColorV(1)
 	imgui.PopStyleVarV(1)
+
+	if showConnectSSH {
+		if imgui.BeginV("Connect SSH", &showConnectSSH, imgui.WindowFlagsNoResize|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoMove) {
+			imgui.Text("To connect to the SSH server, run the following command in your terminal:")
+			imgui.Text("ssh " + id + "@localhost -p 2020")
+			if imgui.Button("Copy") {
+				clipboard.WriteAll("ssh " + id + "@localhost -p 2020")
+			}
+			imgui.SameLine()
+			if imgui.Button("Close") {
+				showConnectSSH = false
+			}
+		}
+		imgui.End()
+	}
 
 	if isRenaming {
 		if imgui.BeginV("Rename", nil, imgui.WindowFlagsNoResize|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoMove) {
