@@ -125,7 +125,11 @@ function Button({ text, pos, onClick }: any) {
 							setIsPressed(false);
 							ref.current?.setBodyType(0, true); // dynamic
 						}}
+						onPointerOver={() => {
+							document.body.style.cursor = "pointer";
+						}}
 						onPointerLeave={() => {
+							document.body.style.cursor = "default";
 							setIsPressed(false);
 							ref.current?.setBodyType(0, true); // dynamic
 						}}
