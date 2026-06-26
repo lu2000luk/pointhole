@@ -500,7 +500,7 @@ func loop() {
 	imgui.PopStyleVarV(1)
 
 	if showConnectSSH {
-		if imgui.BeginV("Connect SSH", &showConnectSSH, imgui.WindowFlagsNoResize|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoMove) {
+		if imgui.BeginV("Connect SSH", &showConnectSSH, imgui.WindowFlagsAlwaysAutoResize) {
 			imgui.Text("To connect to the SSH server, run the following command in your terminal:")
 			imgui.Text("ssh " + id + "@localhost -p 2020")
 			if imgui.Button("Copy") {

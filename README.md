@@ -67,4 +67,5 @@ Read and writes are mainly for editing small files such as configs. Large files 
 
 ## Planned
 
-- QoL (Integrated terminal, explorer tabs/favourites)
+- PTY support for the SSH feature (makes stuff like the node repl work and makes bash/sh better)
+- QoL (explorer tabs/favourites)
