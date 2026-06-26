@@ -367,7 +367,7 @@ function App() {
 
 			<div style={{ height: "100vh", width: "100vw" }}>
 				<Canvas>
-					<BackgroundImage />
+					{/* <BackgroundImage /> */}
 
 					<Physics>
 						<pointLight distance={10} intensity={20} color="yellow" />
