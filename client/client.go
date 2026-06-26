@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"os/signal"
 	"runtime"
 	"sort"
@@ -125,6 +124,7 @@ var copiedPath string = ""
 var isCut bool = false
 
 var showConnectSSH bool = false
+var isServingSSH bool = false
 
 var emulatedFS = make(map[string][]LSResponseEntry)
 var get_transfers = make(map[string]string)    // [id]:[path]
@@ -470,6 +470,11 @@ func loop() {
 				if imgui.MenuItemBool("Serve SSH") {
 					go ServeSSH(id)
 
+					showConnectSSH = true
+					isServingSSH = true
+				}
+
+				if isServingSSH && imgui.MenuItemBool("Get command") {
 					showConnectSSH = true
 				}
 
