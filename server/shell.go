@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"log"
@@ -26,20 +25,19 @@ var restartShell bool
 func GetShell() string {
 	if runtime.GOOS == "windows" {
 		return "cmd"
-	} else {
-		return "sh"
 	}
+	return "sh"
 }
 
 type ChunkInterceptor struct {
-	Buffer  bytes.Buffer
 	OnChunk func(chunk []byte)
 }
 
 func (ci *ChunkInterceptor) Write(p []byte) (n int, err error) {
-	ci.OnChunk(p)
-
-	return ci.Buffer.Write(p)
+	if ci.OnChunk != nil {
+		ci.OnChunk(p)
+	}
+	return len(p), nil
 }
 
 func HandlePipe(c *SafeWebSocket, key string) {
@@ -81,7 +79,7 @@ func startShell(c *SafeWebSocket, key string) error {
 	shellCmd = cmd
 	shellMu.Unlock()
 
-	out_interceptor := &ChunkInterceptor{
+	outInterceptor := &ChunkInterceptor{
 		OnChunk: func(chunk []byte) {
 			log.Printf("OutChunk (%d bytes): %s\n", len(chunk), string(chunk))
 
@@ -95,7 +93,7 @@ func startShell(c *SafeWebSocket, key string) error {
 
 	go func() {
 		defer ptm.Close()
-		if _, err := io.Copy(out_interceptor, ptm); err != nil {
+		if _, err := io.Copy(outInterceptor, ptm); err != nil {
 			log.Println("Error copying stdout:", err)
 		}
 	}()
