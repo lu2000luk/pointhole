@@ -21,6 +21,7 @@ var shellCmd *pty.Cmd
 var shellConn *SafeWebSocket
 var shellKey string
 var restartShell bool
+var shellPTY *pty.Pty
 
 func GetShell() string {
 	if runtime.GOOS == "windows" {
@@ -77,6 +78,7 @@ func startShell(c *SafeWebSocket, key string) error {
 	outpipe = ptm
 	errpipe = nil
 	shellCmd = cmd
+	shellPTY = &ptm
 	shellMu.Unlock()
 
 	outInterceptor := &ChunkInterceptor{

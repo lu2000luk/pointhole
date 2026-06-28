@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -57,6 +58,7 @@ type Command struct {
 	GetChunkRange TransferChunkRange `json:"r"` // only for getChunk
 	UploadData    TransferChunk      `json:"u"` // only for uploadChunk
 	Command       string             `json:"c"` // ls,mv,rm,get,ping,mkdir,copy,upload,uploadChunk,getChunk,stdin
+	Stdin         []byte             `json:"s"` // only for stdin
 }
 
 type Stdout struct {
@@ -111,8 +113,8 @@ type GenericResponse struct {
 	Type    string `json:"type"`
 }
 
-func writeStdinCommand(w io.Writer, input string) error {
-	_, err := w.Write([]byte(input))
+func writeStdinCommand(w io.Writer, input []byte) error {
+	_, err := w.Write(input)
 	return err
 }
 
@@ -292,12 +294,38 @@ func main() {
 					continue
 				}
 
-				if com.Target == "" {
+				if com.Destination == "resize" {
+					if com.Target == "" {
+						log.Printf(prefix + "Missing target for resize")
+						continue
+					}
+
+					parts := strings.Split(com.Target, "|")
+					if len(parts) != 2 {
+						log.Printf(prefix + "Invalid target format for resize")
+						continue
+					}
+
+					w, err1 := strconv.Atoi(parts[0])
+					h, err2 := strconv.Atoi(parts[1])
+					if err1 != nil || err2 != nil {
+						log.Printf(prefix + "Error converting target dimensions for resize")
+						continue
+					}
+
+					shellMu.Lock()
+					(*shellPTY).Resize(int(w), int(h))
+					shellMu.Unlock()
+					log.Printf(prefix+"Resized shell to %dx%d", w, h)
+					continue
+				}
+
+				if com.Stdin == nil {
 					log.Printf(prefix + "Missing data for stdin")
 					continue
 				}
 
-				if com.Target == "\x03" {
+				if string(com.Stdin) == "\x03" {
 					log.Printf(prefix + "Received interrupt command")
 					if err := InterruptShell(); err != nil {
 						log.Printf(prefix+"Error interrupting shell: %v", err)
@@ -305,9 +333,9 @@ func main() {
 					continue
 				}
 
-				log.Printf(prefix+"Received stdin command: %s", com.Target)
+				log.Printf(prefix+"Received stdin command: %s", string(com.Stdin))
 
-				if err := writeStdinCommand(inpipe, com.Target); err != nil {
+				if err := writeStdinCommand(inpipe, com.Stdin); err != nil {
 					log.Printf(prefix+"Error writing to stdin: %v", err)
 				}
 			}

@@ -52,6 +52,7 @@ type Command struct {
 	GetChunkRange TransferChunkRange `json:"r"` // only for getChunk
 	UploadData    TransferChunk      `json:"u"` // only for uploadChunk
 	Command       string             `json:"c"` // ls,mv,rm,get,ping,mkdir,copy,upload,uploadChunk,getChunk,stdin
+	Stdin         []byte             `json:"s"` // only for stdin
 }
 
 type Stdout struct {

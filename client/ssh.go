@@ -1,13 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
 	"runtime"
 	"sync"
 	"sync/atomic"
-	"unicode/utf8"
 
 	"github.com/gliderlabs/ssh"
 )
@@ -46,45 +46,10 @@ type sshStdinForwarder struct {
 }
 
 func (f *sshStdinForwarder) Write(p []byte) (int, error) {
-	if len(p) == 0 {
-		return 0, nil
-	}
-
-	f.mu.Lock()
-	defer f.mu.Unlock()
-
-	for _, b := range p {
-		switch b {
-		case 0x03:
-			if len(f.line) > 0 {
-				f.line = f.line[:0]
-				f.send([]byte("\n"))
-				// _, _ = sshOut.Write([]byte("^C\r\n"))
-				continue
-			}
-			f.send([]byte{0x03})
-			// _, _ = sshOut.Write([]byte("^C\r\n"))
-		case '\r', '\n':
-			f.line = append(f.line, '\n')
-			f.send(f.line)
-			f.line = f.line[:0]
-			// _, _ = sshOut.Write([]byte("\r\n"))
-		case 0x7f, 0x08:
-			if len(f.line) == 0 {
-				continue
-			}
-			_, size := utf8.DecodeLastRune(f.line)
-			if size == 0 {
-				size = 1
-			}
-			f.line = f.line[:len(f.line)-size]
-			// _, _ = sshOut.Write([]byte("\b \b"))
-		default:
-			f.line = append(f.line, b)
-			// _, _ = sshOut.Write([]byte{b})
-		}
-	}
-
+	SendCommand(Command{
+		Command: "stdin",
+		Stdin:   append([]byte(nil), p...),
+	})
 	return len(p), nil
 }
 
@@ -92,7 +57,7 @@ func (f *sshStdinForwarder) send(p []byte) {
 	log.Printf("SSH stdin (%d bytes): %q\n", len(p), string(p))
 	SendCommand(Command{
 		Command: "stdin",
-		Target:  string(p),
+		Stdin:   append([]byte(nil), p...),
 	})
 }
 
@@ -136,7 +101,7 @@ func ServeSSH(key string) {
 		done := make(chan struct{}, 1)
 		stdinForwarder := &sshStdinForwarder{}
 		go func() {
-			buf := make([]byte, 256) // Small buffer for immediate forwarding
+			buf := make([]byte, 4096) // Small buffer for immediate forwarding
 			for {
 				n, err := s.Read(buf)
 				if n > 0 {
@@ -145,8 +110,6 @@ func ServeSSH(key string) {
 					if writeErr != nil {
 						break
 					}
-					stdinForwarder.send(stdinForwarder.line)
-					stdinForwarder.line = stdinForwarder.line[:0]
 				}
 				if err != nil {
 					break
@@ -155,10 +118,29 @@ func ServeSSH(key string) {
 			done <- struct{}{}
 		}()
 
+		pty, winCh, ok := s.Pty()
+		if ok {
+			SendCommand(Command{
+				Command:     "stdin",
+				Destination: "resize",
+				Target:      fmt.Sprintf("%d|%d", pty.Window.Width, pty.Window.Height),
+			})
+
+			go func() {
+				for win := range winCh {
+					SendCommand(Command{
+						Command:     "stdin",
+						Destination: "resize",
+						Target:      fmt.Sprintf("%d|%d", win.Width, win.Height),
+					})
+				}
+			}()
+		}
+
 		<-done
 		SendCommand(Command{
 			Command: "stdin",
-			Target:  "exit\n",
+			Stdin:   []byte("exit\n"),
 		})
 	}
 
