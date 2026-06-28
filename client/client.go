@@ -475,6 +475,13 @@ func loop() {
 					isServingSSH = true
 				}
 
+				if imgui.MenuItemBool("Try start shell") {
+					SendCommand(Command{
+						Command:     "stdin",
+						Destination: "start",
+					})
+				}
+
 				if isServingSSH && imgui.MenuItemBool("Get command") {
 					showConnectSSH = true
 				}
