@@ -112,7 +112,6 @@ type GenericResponse struct {
 }
 
 func writeStdinCommand(w io.Writer, input string) error {
-	input = strings.ReplaceAll(input, "\r", "\n")
 	_, err := w.Write([]byte(input))
 	return err
 }

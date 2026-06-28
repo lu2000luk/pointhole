@@ -6,9 +6,10 @@ import (
 	"io"
 	"log"
 	"os"
-	"os/exec"
 	"runtime"
 	"sync"
+
+	"github.com/aymanbagabas/go-pty"
 )
 
 var inpipe io.WriteCloser
@@ -17,7 +18,7 @@ var errpipe io.ReadCloser
 
 var started = false
 var shellMu sync.Mutex
-var shellCmd *exec.Cmd
+var shellCmd *pty.Cmd
 var shellConn *SafeWebSocket
 var shellKey string
 var restartShell bool
@@ -60,33 +61,23 @@ func startShell(c *SafeWebSocket, key string) error {
 	shellKey = key
 	shellMu.Unlock()
 
-	cmd := exec.Command(GetShell())
-	var err error = nil
-	stdinPipe, err := cmd.StdinPipe()
+	ptm, err := pty.New()
 	if err != nil {
-		markShellStartFailed()
-		return err
+		log.Fatalf("failed to open pty: %s", err)
 	}
-	stdoutPipe, err := cmd.StdoutPipe()
-	if err != nil {
-		markShellStartFailed()
-		return err
-	}
-	stderrPipe, err := cmd.StderrPipe()
-	if err != nil {
-		markShellStartFailed()
-		return err
-	}
+
+	cmd := ptm.Command(GetShell())
 
 	if err := cmd.Start(); err != nil {
 		markShellStartFailed()
+		ptm.Close()
 		return err
 	}
 
 	shellMu.Lock()
-	inpipe = stdinPipe
-	outpipe = stdoutPipe
-	errpipe = stderrPipe
+	inpipe = ptm
+	outpipe = ptm
+	errpipe = nil
 	shellCmd = cmd
 	shellMu.Unlock()
 
@@ -102,29 +93,10 @@ func startShell(c *SafeWebSocket, key string) error {
 		},
 	}
 
-	err_interceptor := &ChunkInterceptor{
-		OnChunk: func(chunk []byte) {
-			log.Printf("ErrChunk (%d bytes): %s\n", len(chunk), string(chunk))
-			MarshallAndSend(Stdout{
-				Type:    "stdout",
-				Content: chunk,
-				Error:   true,
-			}, c, key)
-		},
-	}
-
 	go func() {
-		defer stdoutPipe.Close()
-		defer stdinPipe.Close()
-		if _, err := io.Copy(out_interceptor, stdoutPipe); err != nil {
+		defer ptm.Close()
+		if _, err := io.Copy(out_interceptor, ptm); err != nil {
 			log.Println("Error copying stdout:", err)
-		}
-	}()
-
-	go func() {
-		defer stderrPipe.Close()
-		if _, err := io.Copy(err_interceptor, stderrPipe); err != nil {
-			log.Println("Error copying stderr:", err)
 		}
 	}()
 
@@ -156,7 +128,7 @@ func markShellStartFailed() {
 	errpipe = nil
 }
 
-func markShellStopped(cmd *exec.Cmd) bool {
+func markShellStopped(cmd *pty.Cmd) bool {
 	shellMu.Lock()
 	defer shellMu.Unlock()
 
