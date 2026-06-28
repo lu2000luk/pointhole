@@ -14,7 +14,7 @@ cd $HOME/.local/bin/
 echo "Downloading server..."
 
 # add last commit to the url to bust the cache
-curl -o pointserver https://cdn.lu2000luk.com/pointhole/server/server?commit=8b1dc53
+curl -o pointserver https://cdn.lu2000luk.com/pointhole/server/server?commit=ebb55f3
 chmod +x pointserver
 
 echo "Server installed to $HOME/.local/bin/pointserver"

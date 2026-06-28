@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState } from "react";
+import { useRef, useMemo, useState, useEffect } from "react";
 import "./App.css";
 import * as THREE from "three";
 import { useTexture, PerspectiveCamera } from "@react-three/drei";
@@ -239,6 +239,18 @@ function App() {
 	const [serverSelected, setServerSelected] = useState(true);
 	const [copiedLinux, setCopiedLinux] = useState(false);
 	const [copiedWindows, setCopiedWindows] = useState(false);
+
+	useEffect(() => {
+		document.addEventListener("keydown", (e) => {
+			if (e.key === "Escape") {
+				setScriptsOpen(false);
+			}
+
+			if (e.key === "s") {
+				setScriptsOpen(true);
+			}
+		});
+	});
 
 	return (
 		<>
