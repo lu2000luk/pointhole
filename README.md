@@ -57,6 +57,8 @@ Built with Go.
 
 Server software at https://git.lu2000luk.com/lu2000luk/end2end (all packets are encrypted)
 
+Demo server runs on https://git.lu2000luk.com/lu2000luk/demobox
+
 ## How does it do it
 
 Websockets.
